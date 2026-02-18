@@ -46,10 +46,10 @@ export default function App() {
 
   const perms = permissionsFor(role);
 
-  const onRoleChange = (next: AppRole) => {
-    setRole(next);
-    localStorage.setItem("role", next);
-  };
+ // const onRoleChange = (next: AppRole) => {
+ //   setRole(next);
+ //   localStorage.setItem("role", next);
+ // };
 
   const resetAll = () => {
     setCatalog(null);
