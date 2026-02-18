@@ -31,7 +31,7 @@ function permissionsFor(role: AppRole) {
 }
 
 export default function App() {
-  const [role, setRole] = useState<AppRole>("ExternalUser");
+  const [role, setRole] = useState<AppRole>("SuperUser");
   const [page, setPage] = useState<"quote" | "users">("quote");
 
   const [catalog, setCatalog] = useState<Catalog | null>(null);
@@ -57,7 +57,7 @@ export default function App() {
     setAutomationEnabled(true);
     setPage("quote");
     localStorage.removeItem("role");
-    setRole("ExternalUser");
+    setRole("SuperUser");
   };
 
   return (
@@ -73,9 +73,10 @@ export default function App() {
           marginBottom: 16,
         }}
       >
-        <h2 style={{ margin: 0 }}>Quotation Tool (MVP)</h2>
+        <h2 style={{ margin: 0 }}>Quotation Tool</h2>
 
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+{/*
           <select
             value={role}
             onChange={(e) => onRoleChange(e.target.value as AppRole)}
@@ -86,7 +87,7 @@ export default function App() {
             <option value="InternalUser">InternalUser</option>
             <option value="ExternalUser">ExternalUser</option>
           </select>
-
+*/}
           <Button onClick={resetAll}>RESET</Button>
         </div>
       </div>
@@ -103,7 +104,7 @@ export default function App() {
               }}
             />
           )}
-
+{/*
           {perms.canManageUsers && (
             <Button
               variant="outlined"
@@ -111,7 +112,7 @@ export default function App() {
             >
               {page === "users" ? "Back to Quotation" : "User Management"}
             </Button>
-          )}
+          )} */}
         </div>
       )}
 
