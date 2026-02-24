@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Container, Button } from "@mui/material";
 
 import Logo from "./components/Logo";
@@ -8,8 +8,11 @@ import ItemSelector from "./components/ItemSelector";
 import QuoteSummary from "./components/QuoteSummary";
 import UserManagement from "./components/UserManagement";
 
-import type { Catalog } from "./types";
+// TYPE-ONLY imports (TS with verbatimModuleSyntax)
+import type { Catalog, ConfigState } from "./types";
+import { createInitialState } from "./logic/ruleEngine";
 
+// ---- Legacy summary line type (kept so QuoteSummary keeps working) ----
 export type AppRole = "SuperUser" | "InternalUser" | "ExternalUser";
 
 export type ItemRow = {
@@ -35,8 +38,7 @@ export default function App() {
   const [page, setPage] = useState<"quote" | "users">("quote");
 
   const [catalog, setCatalog] = useState<Catalog | null>(null);
-  const [items, setItems] = useState<ItemRow[]>([]);
-  const [automationEnabled, setAutomationEnabled] = useState(true);
+  const [state, setState] = useState<ConfigState | null>(null);
 
   // load role from storage
   useEffect(() => {
@@ -46,19 +48,59 @@ export default function App() {
 
   const perms = permissionsFor(role);
 
- // const onRoleChange = (next: AppRole) => {
- //   setRole(next);
- //   localStorage.setItem("role", next);
- // };
 
-  const resetAll = () => {
-    setCatalog(null);
-    setItems([]);
-    setAutomationEnabled(true);
-    setPage("quote");
-    localStorage.removeItem("role");
-    setRole("SuperUser");
-  };
+// add a counter key at the top-level component state
+const [uploaderKey, setUploaderKey] = useState(0);
+
+const resetAll = () => {
+  setCatalog(null);
+  setState(null);
+  setPage("quote");
+  localStorage.removeItem("role");
+  setRole("SuperUser");
+
+  // 🔑 Force <UploadExcel /> to remount so the <input type="file"> is cleared.
+  setUploaderKey((k) => k + 1);
+};
+
+
+  // === Adapter: convert live configuration -> legacy ItemRow[] for QuoteSummary ===
+  const itemsForSummary: ItemRow[] = useMemo(() => {
+    if (!state) return [];
+
+    const out: ItemRow[] = [];
+
+    // Include the selected system (if any) as the first line
+    if (state.system) {
+      out.push({
+        item: state.system.name,
+        sku: state.system.sku,
+        price: state.system.price ?? 0,
+        currency: state.system.currency ?? "NOK",
+        checked: true,
+        qty: 1,
+      });
+    }
+
+    // Then, one line per selected group option (in level order)
+    for (const group of state.catalog.groups) {
+      const sku = state.selections.get(group);
+      if (!sku) continue;
+      const p = state.catalog.bySKU.get(sku);
+      if (!p) continue;
+
+      out.push({
+        item: p.name,
+        sku: p.sku,
+        price: p.price ?? 0,
+        currency: p.currency ?? "NOK",
+        checked: true,
+        qty: 1,
+      });
+    }
+
+    return out;
+  }, [state]);
 
   return (
     <Container maxWidth="lg" style={{ paddingTop: 24, paddingBottom: 24 }}>
@@ -76,18 +118,6 @@ export default function App() {
         <h2 style={{ margin: 0 }}>Quotation Tool</h2>
 
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-{/*
-          <select
-            value={role}
-            onChange={(e) => onRoleChange(e.target.value as AppRole)}
-            style={{ padding: "6px 8px" }}
-            title="MVP role selector"
-          >
-            <option value="SuperUser">SuperUser</option>
-            <option value="InternalUser">InternalUser</option>
-            <option value="ExternalUser">ExternalUser</option>
-          </select>
-*/}
           <Button onClick={resetAll}>RESET</Button>
         </div>
       </div>
@@ -95,16 +125,19 @@ export default function App() {
       {/* Actions row */}
       {(perms.canUpload || perms.canManageUsers) && (
         <div style={{ marginBottom: 16, display: "flex", gap: 12, alignItems: "center" }}>
-          {perms.canUpload && page === "quote" && (
-            <UploadExcel
-              onData={(cat) => {
-                setCatalog(cat);
-                setItems(cat.products.map((p) => ({ ...p, checked: false, qty: 1 })));
-                setPage("quote");
-              }}
-            />
-          )}
-{/*
+
+{perms.canUpload && page === "quote" && (
+  <UploadExcel
+    key={uploaderKey}          // ← ensures a clean file input after reset
+    onData={(cat) => {
+      setCatalog(cat);
+      setState(createInitialState(cat));
+      setPage("quote");
+    }}
+  />
+)}
+
+          {/* 
           {perms.canManageUsers && (
             <Button
               variant="outlined"
@@ -112,7 +145,8 @@ export default function App() {
             >
               {page === "users" ? "Back to Quotation" : "User Management"}
             </Button>
-          )} */}
+          )} 
+          */}
         </div>
       )}
 
@@ -132,16 +166,12 @@ export default function App() {
             </div>
           )}
 
-          {catalog && items.length > 0 && perms.canQuote && (
+          {/* New engine: ItemSelector now drives state, not a local items array */}
+          {state && perms.canQuote && (
             <>
-              <ItemSelector
-                items={items}
-                onChange={setItems}
-                automationEnabled={automationEnabled}
-                setAutomationEnabled={setAutomationEnabled}
-                catalog={catalog}
-              />
-              <QuoteSummary items={items} automationEnabled={automationEnabled} />
+              <ItemSelector state={state} setState={setState} />
+              {/* Keep your existing QuoteSummary – it still receives ItemRow[] + automation flag */}
+              <QuoteSummary items={itemsForSummary} automationEnabled={state.automation} />
             </>
           )}
         </>
