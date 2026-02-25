@@ -80,20 +80,25 @@ export default function App() {
     }
 
     // Then, one line per selected group option (in level order)
-    for (const group of state.catalog.groups) {
-      const sku = state.selections.get(group);
-      if (!sku) continue;
-      const p = state.catalog.bySKU.get(sku);
-      if (!p) continue;
+    const asArray = (v: string | string[] | undefined): string[] =>
+      !v ? [] : Array.isArray(v) ? v : [v];
 
-      out.push({
-        item: p.name,
-        sku: p.sku,
-        price: p.price ?? 0,
-        currency: p.currency ?? "NOK",
-        checked: true,
-        qty: 1,
-      });
+    for (const group of state.catalog.groups) {
+      const skus = asArray(state.selections.get(group));
+
+      for (const sku of skus) {
+        const p = state.catalog.bySKU.get(sku);
+        if (!p) continue;
+
+        out.push({
+          item: p.name,
+          sku: p.sku,
+          price: p.price ?? 0,
+          currency: p.currency ?? "NOK",
+          checked: true,
+          qty: 1,
+        });
+      }
     }
 
     return out;
