@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Container, Button } from "@mui/material";
+import { Container } from "@mui/material";
 
 import Logo from "./components/Logo";
 import UploadExcel from "./components/UploadExcel";
@@ -45,21 +45,7 @@ export default function App() {
     if (saved) setRole(saved);
   }, []);
 
-  const perms = permissionsFor(role);
-
-  // add a counter key at the top-level component state
-  const [uploaderKey, setUploaderKey] = useState(0);
-
-  const resetAll = () => {
-    setCatalog(null);
-    setState(null);
-    setPage("quote");
-    localStorage.removeItem("role");
-    setRole("SuperUser");
-
-    // 🔑 Force <UploadExcel /> to remount so the <input type="file"> is cleared.
-    setUploaderKey((k) => k + 1);
-  };
+  const perms = permissionsFor(role);  
 
   // === Adapter: convert live configuration -> legacy ItemRow[] for QuoteSummary ===
   const itemsForSummary: ItemRow[] = useMemo(() => {
@@ -119,23 +105,23 @@ export default function App() {
       >
         <h2 style={{ margin: 0 }}>Quotation Tool</h2>
 
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <Button onClick={resetAll}>RESET</Button>
-        </div>
       </div>
 
       {/* Actions row */}
       {(perms.canUpload || perms.canManageUsers) && (
         <div style={{ marginBottom: 16, display: "flex", gap: 12, alignItems: "center" }}>
           {perms.canUpload && page === "quote" && (
-            <UploadExcel
-              key={uploaderKey} // ← ensures a clean file input after reset
-              onData={(cat) => {
-                setCatalog(cat);
-                setState(createInitialState(cat));
-                setPage("quote");
-              }}
-            />
+           <UploadExcel
+  onData={(cat) => {
+    setCatalog(cat);
+    setState(createInitialState(cat));
+  }}
+  hasBook={!!catalog}
+  onReset={() => {
+    setCatalog(null);
+    setState(null);
+  }}
+/>
           )}
 
           {/* 
