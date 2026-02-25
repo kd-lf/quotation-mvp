@@ -23,8 +23,9 @@ export type ItemRow = {
   checked?: boolean;
   qty?: number;
   link?: string;
-  isHeader?: boolean; // <-- add
-  parentSku?: string; // <-- optional grouping
+
+  isHeader?: boolean; // parent BOM header row (Mode A: not priced)
+  parentSku?: string; // optional grouping
 };
 
 function permissionsFor(role: AppRole) {
@@ -88,25 +89,31 @@ export default function App() {
     setPriceMap(null);
   };
 
-  // === Adapter: convert live configuration -> legacy ItemRow[] for QuoteSummary ===
   const itemsForSummary: ItemRow[] = useMemo(() => {
     if (!state) return [];
 
     const out: ItemRow[] = [];
     const bom = state.catalog.bomByParentSku;
 
+    const normSku = (s: string) =>
+      String(s)
+        .replace(/[\s\u00A0]/g, "")
+        .trim()
+        .toUpperCase();
+
+    const priceFromMap = (sku: string) => priceMap?.get(normSku(sku));
+
     const asArray = (v: string | string[] | undefined): string[] =>
       !v ? [] : Array.isArray(v) ? v : [v];
 
-    const expandParent = (parentSku: string) => {
+    const expandSku = (parentSku: string) => {
       const parent = state.catalog.bySKU.get(parentSku);
       if (!parent) return;
 
       const bomLines = bom?.get(parentSku);
 
-      // If this SKU has BOM children → Mode A bundle
       if (bomLines?.length) {
-        // Parent header row (not priced)
+        // Parent header (Mode A: shown but not priced)
         out.push({
           item: parent.name,
           sku: parent.sku,
@@ -117,19 +124,20 @@ export default function App() {
           isHeader: true,
         });
 
-        // Children rows (priced)
+        // Children (priced via priceMap first, then BOM sheet fallback)
         for (const line of bomLines) {
-          const child = state.catalog.bySKU.get(line.sku);
-          const norm = (s: string) => s.trim().toUpperCase();
+          const child = state.catalog.bySKU.get(line.sku); // often undefined (BOM-only SKUs)
+
+          const unit = child?.price ?? priceFromMap(line.sku) ?? line.price ?? 0;
 
           out.push({
             item: child?.name ?? line.name ?? line.sku,
-            sku: line.sku,
-            price: child?.price ?? priceMap?.get(norm(line.sku)) ?? line.price ?? 0,
+            sku: String(line.sku),
+            price: unit,
             currency: child?.currency ?? parent.currency ?? "NOK",
             qty: line.qty,
             checked: true,
-            parentSku: parentSku,
+            parentSku,
           });
         }
       } else {
@@ -137,7 +145,7 @@ export default function App() {
         out.push({
           item: parent.name,
           sku: parent.sku,
-          price: parent.price ?? 0,
+          price: parent.price ?? priceFromMap(parent.sku) ?? 0,
           currency: parent.currency ?? "NOK",
           qty: 1,
           checked: true,
@@ -145,17 +153,13 @@ export default function App() {
       }
     };
 
-    // Expand system first (if selected)
-    if (state.system) {
-      expandParent(state.system.sku);
-    }
+    // System first
+    if (state.system) expandSku(state.system.sku);
 
-    // Then expand selected group items
+    // Then selected groups
     for (const group of state.catalog.groups) {
       const skus = asArray(state.selections.get(group));
-      for (const sku of skus) {
-        expandParent(sku);
-      }
+      for (const sku of skus) expandSku(sku);
     }
 
     return out;

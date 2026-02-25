@@ -1,8 +1,8 @@
-// src/logic/masterPrice.ts
 import * as XLSX from "xlsx";
 
 const normSku = (v: unknown) =>
   String(v ?? "")
+    .replace(/[\s\u00A0]/g, "")
     .trim()
     .toUpperCase();
 
@@ -20,12 +20,10 @@ function parsePrice(v: unknown): number | undefined {
   // Heuristic:
   // "3,440" -> thousands separator -> 3440
   // "3,44"  -> decimal -> 3.44
-  // If comma with exactly 3 digits after -> thousands
-  const commaMatch = s.match(/^(-?\d+),(\d{3})$/);
-  if (commaMatch) {
-    s = `${commaMatch[1]}${commaMatch[2]}`;
+  const commaThousands = s.match(/^(-?\d+),(\d{3})$/);
+  if (commaThousands) {
+    s = `${commaThousands[1]}${commaThousands[2]}`;
   } else {
-    // otherwise treat comma as decimal separator
     s = s.replace(",", ".");
   }
 
@@ -34,12 +32,14 @@ function parsePrice(v: unknown): number | undefined {
 }
 
 /**
- * Scan ALL sheets.
+ * Build a map of SKU -> unit price by scanning ALL sheets.
  * Assumption: SKU is in column C (index 2) and price is in column F (index 5).
  */
 export function buildMasterPriceMap(workbook: XLSX.WorkBook): Map<string, number> {
-  const map = new Map<string, number>();
   console.log("USING masterPrice.ts v2 (SKU col C, price col F)");
+
+  const map = new Map<string, number>();
+
   for (const sheetName of workbook.SheetNames) {
     const sheet = workbook.Sheets[sheetName];
     if (!sheet) continue;
@@ -51,10 +51,10 @@ export function buildMasterPriceMap(workbook: XLSX.WorkBook): Map<string, number
 
       const sku = normSku(row[2]); // Column C
       const price = parsePrice(row[5]); // Column F
-
       if (!sku || price === undefined) continue;
 
-      map.set(sku, price);
+      // First hit wins (prevents later sheets/rows overwriting)
+      if (!map.has(sku)) map.set(sku, price);
     }
   }
 
