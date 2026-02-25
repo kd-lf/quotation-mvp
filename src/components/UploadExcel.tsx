@@ -3,6 +3,46 @@ import * as XLSX from "xlsx";
 import { Alert, Button, Stack } from "@mui/material";
 import { useCallback, useRef, useState } from "react";
 import type { Catalog, Product, Rule, RuleAction, RuleCondition } from "../types";
+import type { BomLine } from "../types";
+
+function toSku(v: unknown): string {
+  return String(v ?? "").trim();
+}
+
+function toNum(v: unknown, fallback: number): number {
+  if (v == null || v === "") return fallback;
+  const n = typeof v === "number" ? v : Number(String(v).replace(",", "."));
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function parseBomSheet(workbook: XLSX.WorkBook): Map<string, BomLine[]> {
+  const sheet = workbook.Sheets["BOM"];
+  const map = new Map<string, BomLine[]>();
+  if (!sheet) return map;
+
+  const rows = XLSX.utils.sheet_to_json<any>(sheet, { defval: "" });
+
+  for (const r of rows) {
+    const parent = toSku(r.Parent);
+    const sku = toSku(r.SKU);
+    if (!parent || !sku) continue;
+
+    const qty = Math.max(1, Math.floor(toNum(r.Quantity, 1)));
+    const name = toSku(r.Name) || undefined;
+
+    const rawPrice = r.Price;
+    const priceNum = toNum(rawPrice, NaN);
+    const price = Number.isFinite(priceNum) ? priceNum : undefined;
+
+    const line: BomLine = { sku, qty, name, price };
+
+    const arr = map.get(parent) ?? [];
+    arr.push(line);
+    map.set(parent, arr);
+  }
+
+  return map;
+}
 
 function generateAutoSKU(index: number): string {
   return `AUTO-${String(index).padStart(4, "0")}`;
@@ -119,7 +159,9 @@ export default function UploadExcel({
             group: row.Group?.toString().trim() || "",
             name: row.Name?.toString().trim() || "",
             sku,
-            default: String(row.Default ?? "").toLowerCase().includes("yes"),
+            default: String(row.Default ?? "")
+              .toLowerCase()
+              .includes("yes"),
             price: row.Price !== "" && row.Price != null ? Number(row.Price) : undefined,
             currency: row.Currency ? String(row.Currency).trim() : undefined,
             notes: row.Notes ? String(row.Notes).trim() : undefined,
@@ -130,7 +172,12 @@ export default function UploadExcel({
         const items = products.filter((p) => p.level > 1);
 
         const groups = Array.from(
-          new Set(items.slice().sort((a, b) => a.level - b.level).map((item) => item.group)),
+          new Set(
+            items
+              .slice()
+              .sort((a, b) => a.level - b.level)
+              .map((item) => item.group),
+          ),
         );
 
         // --------------------------
@@ -158,7 +205,9 @@ export default function UploadExcel({
 
             const rule: Rule = {
               id: String(r.RuleID).trim(),
-              enabled: String(r.Enabled ?? "").toLowerCase().includes("yes"),
+              enabled: String(r.Enabled ?? "")
+                .toLowerCase()
+                .includes("yes"),
               if: cond,
               then: action,
             };
@@ -173,12 +222,15 @@ export default function UploadExcel({
         const bySKU = new Map<string, Product>();
         for (const p of products) bySKU.set(p.sku, p);
 
+        const bomByParentSku = parseBomSheet(workbook);
+
         const catalog: Catalog = {
           systems,
           items,
           groups,
           rules,
           bySKU,
+          bomByParentSku,
         };
 
         onData(catalog);

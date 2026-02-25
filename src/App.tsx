@@ -45,7 +45,7 @@ export default function App() {
     if (saved) setRole(saved);
   }, []);
 
-  const perms = permissionsFor(role);  
+  const perms = permissionsFor(role);
 
   // === Adapter: convert live configuration -> legacy ItemRow[] for QuoteSummary ===
   const itemsForSummary: ItemRow[] = useMemo(() => {
@@ -104,24 +104,23 @@ export default function App() {
         }}
       >
         <h2 style={{ margin: 0 }}>Quotation Tool</h2>
-
       </div>
 
       {/* Actions row */}
       {(perms.canUpload || perms.canManageUsers) && (
         <div style={{ marginBottom: 16, display: "flex", gap: 12, alignItems: "center" }}>
           {perms.canUpload && page === "quote" && (
-           <UploadExcel
-  onData={(cat) => {
-    setCatalog(cat);
-    setState(createInitialState(cat));
-  }}
-  hasBook={!!catalog}
-  onReset={() => {
-    setCatalog(null);
-    setState(null);
-  }}
-/>
+            <UploadExcel
+              onData={(cat) => {
+                setCatalog(cat);
+                setState(createInitialState(cat));
+              }}
+              hasBook={!!catalog}
+              onReset={() => {
+                setCatalog(null);
+                setState(null);
+              }}
+            />
           )}
 
           {/* 

@@ -13,6 +13,13 @@ export interface Product {
   notes?: string;
 }
 
+export interface BomLine {
+  sku: string;
+  qty: number;
+  name?: string;
+  price?: number;
+}
+
 export interface RuleCondition {
   // Evaluate against the chosen Level-1 system (and later we can extend to group-level events)
   group?: string; // e.g., "HiPAP System"
@@ -37,11 +44,12 @@ export interface Rule {
 }
 
 export interface Catalog {
-  systems: Product[]; // Level 1 rows from PRODUCTS
-  items: Product[]; // Level >= 2
-  groups: string[]; // ordered by Level from PRODUCTS
-  rules: Rule[]; // parsed from RULES
+  systems: Product[];
+  items: Product[];
+  groups: string[];
+  rules: Rule[];
   bySKU: Map<string, Product>;
+  bomByParentSku: Map<string, BomLine[]>;
 }
 
 // ---------- Live configurator state ----------
