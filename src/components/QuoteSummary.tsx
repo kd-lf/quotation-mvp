@@ -2,18 +2,32 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { Button } from "@mui/material";
 
+type QuoteItem = {
+  item: string;
+  sku: string;
+  qty?: number;
+  price?: number;
+  currency?: string;
+  checked?: boolean;
+  isHeader?: boolean; // <-- NEW: parent bundle header
+};
+
 export default function QuoteSummary({
   items,
   automationEnabled,
   validDays = 30,
 }: {
-  items: Array<any>;
+  items: QuoteItem[];
   automationEnabled?: boolean;
   validDays?: number;
 }) {
-  const selected = items.filter((i: any) => i.checked);
+  const selected = items.filter((i) => i.checked);
 
-  const subtotal = selected.reduce((sum: number, i: any) => sum + i.price * i.qty, 0);
+  // MODE A: Only sum non-header lines (children + normal leaf items)
+  const subtotal = selected
+    .filter((i) => !i.isHeader)
+    .reduce((sum, i) => sum + (i.price ?? 0) * (i.qty ?? 1), 0);
+
   const vat = subtotal * 0.25;
   const total = subtotal + vat;
 
@@ -82,15 +96,30 @@ export default function QuoteSummary({
     autoTable(doc, {
       startY: titleY + 12,
       head: [["Item", "SKU", "Qty", "Price", "Line Total"]],
-      body: selected.map((i: any) => [
-        i.item,
-        i.sku,
-        i.qty,
-        i.price.toFixed(2),
-        (i.price * i.qty).toFixed(2),
-      ]),
+      body: selected.map((i) => {
+        const qty = i.qty ?? 1;
+        const price = i.price ?? 0;
+
+        // Headers: show blanks for price/line totals (Mode A)
+        if (i.isHeader) {
+          return [i.item, i.sku, "", "", ""];
+        }
+
+        return [i.item, i.sku, qty, price.toFixed(2), (price * qty).toFixed(2)];
+      }),
       styles: { fontSize: 10 },
       headStyles: { fillColor: [41, 128, 185] },
+
+      // Optional styling: make header rows look like section headers
+      didParseCell: (data) => {
+        if (data.section !== "body") return;
+        const rowItem = selected[data.row.index];
+        if (rowItem?.isHeader) {
+          data.cell.styles.fontStyle = "bold";
+          // light gray background for header rows
+          data.cell.styles.fillColor = [245, 245, 245];
+        }
+      },
     });
 
     const tableEndY =

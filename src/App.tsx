@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { Container } from "@mui/material";
+import { Container, Box } from "@mui/material";
 
 import Logo from "./components/Logo";
 import UploadExcel from "./components/UploadExcel";
+import UploadPriceBook from "./components/UploadPriceBook";
 import ItemSelector from "./components/ItemSelector";
 import QuoteSummary from "./components/QuoteSummary";
 import UserManagement from "./components/UserManagement";
 
-// TYPE-ONLY imports (TS with verbatimModuleSyntax)
 import type { Catalog, ConfigState } from "./types";
 import { createInitialState } from "./logic/ruleEngine";
+import { applyMasterPricesAndBomRollups } from "./logic/pricing";
 
 // ---- Legacy summary line type (kept so QuoteSummary keeps working) ----
 export type AppRole = "SuperUser" | "InternalUser" | "ExternalUser";
@@ -22,6 +23,8 @@ export type ItemRow = {
   checked?: boolean;
   qty?: number;
   link?: string;
+  isHeader?: boolean; // <-- add
+  parentSku?: string; // <-- optional grouping
 };
 
 function permissionsFor(role: AppRole) {
@@ -38,6 +41,7 @@ export default function App() {
 
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [state, setState] = useState<ConfigState | null>(null);
+  const [priceMap, setPriceMap] = useState<Map<string, number> | null>(null);
 
   // load role from storage
   useEffect(() => {
@@ -47,48 +51,115 @@ export default function App() {
 
   const perms = permissionsFor(role);
 
+  // when product book uploads:
+  const onCatalog = (cat: Catalog) => {
+    const priced = priceMap ? applyMasterPricesAndBomRollups(cat, priceMap) : cat;
+    setCatalog(priced);
+    setState(createInitialState(priced));
+  };
+
+  // when price book uploads:
+  const onPrices = (pm: Map<string, number>) => {
+    console.log("Master price map size:", pm.size);
+
+    const testSku = "444593"; // real BOM child SKU
+
+    console.log("pm.get(testSku):", pm.get(testSku));
+
+    setPriceMap(pm);
+
+    setCatalog((prev) => {
+      if (!prev) return prev;
+
+      const priced = applyMasterPricesAndBomRollups(prev, pm);
+
+      console.log("priced.bySKU has testSku:", priced.bySKU.has(testSku));
+      console.log("priced.bySKU.get(testSku)?.price:", priced.bySKU.get(testSku)?.price);
+
+      setState((s) => (s ? { ...s, catalog: priced } : s));
+
+      return priced;
+    });
+  };
+
+  const resetAll = () => {
+    setCatalog(null);
+    setState(null);
+    setPriceMap(null);
+  };
+
   // === Adapter: convert live configuration -> legacy ItemRow[] for QuoteSummary ===
   const itemsForSummary: ItemRow[] = useMemo(() => {
     if (!state) return [];
 
     const out: ItemRow[] = [];
+    const bom = state.catalog.bomByParentSku;
 
-    // Include the selected system (if any) as the first line
-    if (state.system) {
-      out.push({
-        item: state.system.name,
-        sku: state.system.sku,
-        price: state.system.price ?? 0,
-        currency: state.system.currency ?? "NOK",
-        checked: true,
-        qty: 1,
-      });
-    }
-
-    // Then, one line per selected group option (in level order)
     const asArray = (v: string | string[] | undefined): string[] =>
       !v ? [] : Array.isArray(v) ? v : [v];
 
+    const expandParent = (parentSku: string) => {
+      const parent = state.catalog.bySKU.get(parentSku);
+      if (!parent) return;
+
+      const bomLines = bom?.get(parentSku);
+
+      // If this SKU has BOM children → Mode A bundle
+      if (bomLines?.length) {
+        // Parent header row (not priced)
+        out.push({
+          item: parent.name,
+          sku: parent.sku,
+          price: 0,
+          currency: parent.currency ?? "NOK",
+          qty: 1,
+          checked: true,
+          isHeader: true,
+        });
+
+        // Children rows (priced)
+        for (const line of bomLines) {
+          const child = state.catalog.bySKU.get(line.sku);
+          const norm = (s: string) => s.trim().toUpperCase();
+
+          out.push({
+            item: child?.name ?? line.name ?? line.sku,
+            sku: line.sku,
+            price: child?.price ?? priceMap?.get(norm(line.sku)) ?? line.price ?? 0,
+            currency: child?.currency ?? parent.currency ?? "NOK",
+            qty: line.qty,
+            checked: true,
+            parentSku: parentSku,
+          });
+        }
+      } else {
+        // Normal leaf item (no BOM)
+        out.push({
+          item: parent.name,
+          sku: parent.sku,
+          price: parent.price ?? 0,
+          currency: parent.currency ?? "NOK",
+          qty: 1,
+          checked: true,
+        });
+      }
+    };
+
+    // Expand system first (if selected)
+    if (state.system) {
+      expandParent(state.system.sku);
+    }
+
+    // Then expand selected group items
     for (const group of state.catalog.groups) {
       const skus = asArray(state.selections.get(group));
-
       for (const sku of skus) {
-        const p = state.catalog.bySKU.get(sku);
-        if (!p) continue;
-
-        out.push({
-          item: p.name,
-          sku: p.sku,
-          price: p.price ?? 0,
-          currency: p.currency ?? "NOK",
-          checked: true,
-          qty: 1,
-        });
+        expandParent(sku);
       }
     }
 
     return out;
-  }, [state]);
+  }, [state, priceMap]);
 
   return (
     <Container maxWidth="lg" style={{ paddingTop: 24, paddingBottom: 24 }}>
@@ -110,20 +181,14 @@ export default function App() {
       {(perms.canUpload || perms.canManageUsers) && (
         <div style={{ marginBottom: 16, display: "flex", gap: 12, alignItems: "center" }}>
           {perms.canUpload && page === "quote" && (
-            <UploadExcel
-              onData={(cat) => {
-                setCatalog(cat);
-                setState(createInitialState(cat));
-              }}
-              hasBook={!!catalog}
-              onReset={() => {
-                setCatalog(null);
-                setState(null);
-              }}
-            />
+            <Box sx={{ display: "flex", gap: 2 }}>
+              <UploadExcel onData={onCatalog} hasBook={!!catalog} onReset={resetAll} />
+              <UploadPriceBook disabled={!catalog} onPrices={onPrices} />
+            </Box>
           )}
 
-          {/* 
+          {/* If you re-enable this later, import Button again */}
+          {/*
           {perms.canManageUsers && (
             <Button
               variant="outlined"
@@ -131,7 +196,7 @@ export default function App() {
             >
               {page === "users" ? "Back to Quotation" : "User Management"}
             </Button>
-          )} 
+          )}
           */}
         </div>
       )}
@@ -152,11 +217,9 @@ export default function App() {
             </div>
           )}
 
-          {/* New engine: ItemSelector now drives state, not a local items array */}
           {state && perms.canQuote && (
             <>
               <ItemSelector state={state} setState={setState} />
-              {/* Keep your existing QuoteSummary – it still receives ItemRow[] + automation flag */}
               <QuoteSummary items={itemsForSummary} automationEnabled={state.automation} />
             </>
           )}
