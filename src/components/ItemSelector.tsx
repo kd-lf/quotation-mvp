@@ -12,6 +12,10 @@ import {
 } from "@mui/material";
 import type { ConfigState, Product } from "../types";
 import { applyRules, selectSystem, selectItem } from "../logic/ruleEngine.ts"; // You will create this file next
+import Checkbox from "@mui/material/Checkbox";
+import ListItemText from "@mui/material/ListItemText";
+
+const SOFTWARE_GROUP = "Software Options"; // must match your PRODUCTS group name exactly
 
 interface Props {
   state: ConfigState;
@@ -112,29 +116,62 @@ export default function ItemSelector({ state, setState }: Props) {
       {/* GROUP SECTIONS */}
       {/* ---------------------- */}
       {catalog.groups.map((group) => {
-        const selectedSKU = selections.get(group) || "";
+        const isSoftware = group === SOFTWARE_GROUP;
+
+        const raw = selections.get(group);
+        const selected = Array.isArray(raw) ? raw : raw ? [raw] : [];
 
         return (
-          <Box key={group} sx={{ mt: 2 }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
-              {group}
-            </Typography>
+          <Box key={group} sx={{ my: 2 }}>
+            <Typography variant="h6">{group}</Typography>
 
             <FormControl fullWidth sx={{ mt: 1 }}>
               <InputLabel>{group}</InputLabel>
 
               <Select
-                value={selectedSKU}
+                multiple={isSoftware}
+                value={isSoftware ? selected : (selected[0] ?? "")}
                 label={group}
-                onChange={(e) => handleOptionSelect(group, e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value;
+
+                  if (isSoftware) {
+                    // v is string[] when multiple=true
+                    // easiest: toggle via selectItem by diffing OR create a setGroupSelection function
+                    // minimal: set whole array in state directly
+                    const nextSkus = typeof v === "string" ? [v] : (v as string[]);
+
+                    setState((prev) => {
+                      if (!prev) return prev;
+                      const next = { ...prev, selections: new Map(prev.selections) };
+                      next.selections.set(group, nextSkus);
+                      return next.automation ? applyRules(next) : next;
+                    });
+                  } else {
+                    handleOptionSelect(group, v as string);
+                  }
+                }}
+                renderValue={(val) =>
+                  Array.isArray(val)
+                    ? val.map((sku) => catalog.bySKU.get(sku)?.name ?? sku).join(", ")
+                    : (catalog.bySKU.get(val as string)?.name ?? (val as string))
+                }
               >
                 {getOptionsForGroup(group).map((item) => (
                   <MenuItem key={item.sku} value={item.sku}>
-                    {item.name}
+                    {isSoftware ? (
+                      <>
+                        <Checkbox checked={selected.includes(item.sku)} />
+                        <ListItemText primary={item.name} />
+                      </>
+                    ) : (
+                      item.name
+                    )}
                   </MenuItem>
                 ))}
               </Select>
             </FormControl>
+            <Divider sx={{ mt: 2 }} />
           </Box>
         );
       })}

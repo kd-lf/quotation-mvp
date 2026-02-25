@@ -7,6 +7,13 @@ import type { Catalog, ConfigState, Product, RuleAction, RuleCondition } from ".
  * Small utilities
  * ================================================================================= */
 
+type SelectionValue = string | string[];
+
+function asArray(v: SelectionValue | undefined): string[] {
+  if (!v) return [];
+  return Array.isArray(v) ? v : [v];
+}
+
 function cloneState(state: ConfigState): ConfigState {
   return {
     ...state,
@@ -18,10 +25,10 @@ function getOptionsForGroup(catalog: Catalog, group: string): Product[] {
   return catalog.items.filter((i) => i.group === group);
 }
 
-function getSelectedProductForGroup(state: ConfigState, group: string): Product | undefined {
-  const sku = state.selections.get(group);
-  if (!sku) return undefined;
-  return state.catalog.bySKU.get(sku);
+function getSelectedProductsForGroup(state: ConfigState, group: string): Product[] {
+  const v = state.selections.get(group);
+  const skus = asArray(v);
+  return skus.map((sku) => state.catalog.bySKU.get(sku)).filter((p): p is Product => !!p);
 }
 
 /* =================================================================================
@@ -69,13 +76,17 @@ function setDefaultInGroup(state: ConfigState, group: string, sku?: string): Con
 function requireSelection(state: ConfigState, group: string): ConfigState {
   const next = cloneState(state);
 
-  const currentSKU = next.selections.get(group);
   const options = getOptionsForGroup(next.catalog, group);
+  const current = asArray(next.selections.get(group));
 
-  // If there is a current selection and it still belongs to this group, keep it.
-  if (currentSKU && options.some((o) => o.sku === currentSKU)) return next;
+  // keep only valid SKUs that exist in options
+  const valid = current.filter((sku) => options.some((o) => o.sku === sku));
 
-  // Otherwise set flagged default; if not present, pick first option.
+  if (valid.length > 0) {
+    next.selections.set(group, valid.length === 1 ? valid[0] : valid);
+    return next;
+  }
+
   const def = options.find((o) => o.default) ?? options[0];
   if (def) next.selections.set(group, def.sku);
 
@@ -114,46 +125,35 @@ function autoSelectSku(state: ConfigState, sku?: string): ConfigState {
  * If condition.group targets a specific component group, we evaluate against that group's selection.
  */
 export function ruleMatches(condition: RuleCondition, state: ConfigState): boolean {
-  // If no system selected yet, only allow rules that don't depend on system-level info.
+  const targetGroup = condition.group?.trim();
   const hasSystem = !!state.system;
 
-  // Determine the subject (Product) to test the condition against:
-  // - If condition.group looks like a system, use state.system
-  // - Else if condition.group is a component group, use the selected product in that group
-  // - Else default to system
-  let subject: Product | undefined;
-
-  const targetGroup = condition.group?.trim();
   const isSystemGroup =
     !targetGroup ||
-    /system/i.test(targetGroup) || // "HiPAP System", "System" etc.
+    /system/i.test(targetGroup) ||
     (hasSystem && targetGroup === state.system?.group);
 
-  if (isSystemGroup) {
-    subject = state.system;
-  } else if (targetGroup) {
-    subject = getSelectedProductForGroup(state, targetGroup);
-  }
+  const candidates: Product[] = isSystemGroup
+    ? state.system
+      ? [state.system]
+      : []
+    : targetGroup
+      ? getSelectedProductsForGroup(state, targetGroup)
+      : [];
 
-  // If we still don't have a subject, there's not enough context to match.
-  if (!subject) return false;
+  if (candidates.length === 0) return false;
 
-  // SKU exact match check
-  if (condition.sku && condition.sku !== subject.sku) return false;
+  return candidates.some((subject) => {
+    if (condition.sku && condition.sku !== subject.sku) return false;
 
-  const subjectName = (subject.name || "").toUpperCase();
+    const subjectName = (subject.name || "").toUpperCase();
 
-  // Positive contains
-  if (condition.contains) {
-    if (!subjectName.includes(condition.contains.toUpperCase())) return false;
-  }
+    if (condition.contains && !subjectName.includes(condition.contains.toUpperCase())) return false;
+    if (condition.notContains && subjectName.includes(condition.notContains.toUpperCase()))
+      return false;
 
-  // Negative contains
-  if (condition.notContains) {
-    if (subjectName.includes(condition.notContains.toUpperCase())) return false;
-  }
-
-  return true;
+    return true;
+  });
 }
 
 /* =================================================================================
@@ -208,14 +208,24 @@ export function selectSystem(system: Product, state: ConfigState): ConfigState {
 /**
  * Select a specific SKU inside a group (user action).
  */
+const MULTI_GROUPS = new Set<string>(["Software Options"]); // must match your Excel group name exactly
+
 export function selectItem(group: string, sku: string, state: ConfigState): ConfigState {
   const next = cloneState(state);
 
-  // Only accept valid SKUs that belong to this group
   const product = next.catalog.bySKU.get(sku);
   if (!product || product.group !== group) return next;
 
-  next.selections.set(group, sku);
+  if (MULTI_GROUPS.has(group)) {
+    const current = asArray(next.selections.get(group));
+    const updated = current.includes(sku) ? current.filter((s) => s !== sku) : [...current, sku];
+
+    if (updated.length === 0) next.selections.delete(group);
+    else next.selections.set(group, updated);
+  } else {
+    next.selections.set(group, sku);
+  }
+
   return state.automation ? applyRules(next) : next;
 }
 
