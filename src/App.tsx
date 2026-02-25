@@ -162,7 +162,7 @@ export default function App() {
           {!catalog && (
             <div style={{ marginTop: 8 }}>
               {perms.canUpload
-                ? "Upload a product workbook to begin."
+                ? "No product book loaded. Please upload an Excel file to get started."
                 : "Please ask a SuperUser to upload the product file."}
             </div>
           )}

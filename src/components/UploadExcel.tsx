@@ -178,7 +178,7 @@ export default function UploadExcel({ onData }: { onData: (catalog: Catalog) => 
 
   return (
     <Button variant="contained" component="label">
-      Upload Excel
+      Upload Product Book
       <input type="file" hidden onChange={handleUpload} />
     </Button>
   );
