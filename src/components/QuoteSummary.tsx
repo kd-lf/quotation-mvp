@@ -1,4 +1,3 @@
-
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { Button } from "@mui/material";
@@ -14,10 +13,7 @@ export default function QuoteSummary({
 }) {
   const selected = items.filter((i: any) => i.checked);
 
-  const subtotal = selected.reduce(
-    (sum: number, i: any) => sum + i.price * i.qty,
-    0
-  );
+  const subtotal = selected.reduce((sum: number, i: any) => sum + i.price * i.qty, 0);
   const vat = subtotal * 0.25;
   const total = subtotal + vat;
 
@@ -98,9 +94,7 @@ export default function QuoteSummary({
     });
 
     const tableEndY =
-      (doc as any).lastAutoTable?.finalY != null
-        ? (doc as any).lastAutoTable.finalY
-        : titleY + 12;
+      (doc as any).lastAutoTable?.finalY != null ? (doc as any).lastAutoTable.finalY : titleY + 12;
 
     // --- Totals ---
     const totalsY = tableEndY + 10;

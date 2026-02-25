@@ -1,4 +1,3 @@
-
 export default function Logo() {
   return (
     <div style={{ marginBottom: 20 }}>

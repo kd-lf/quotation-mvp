@@ -1,14 +1,7 @@
-
 // src/logic/ruleEngine.ts
 // Lightweight rule engine for the Excel E3 model (PRODUCTS + RULES)
 
-import type {
-  Catalog,
-  ConfigState,
-  Product,
-  RuleAction,
-  RuleCondition,
-} from "../types";
+import type { Catalog, ConfigState, Product, RuleAction, RuleCondition } from "../types";
 
 /* =================================================================================
  * Small utilities
@@ -255,4 +248,4 @@ export function createInitialState(catalog: Catalog): ConfigState {
     automation: true,
   };
 }
-``
+``;

@@ -1,4 +1,3 @@
-
 import React from "react";
 import {
   FormControl,
@@ -11,15 +10,8 @@ import {
   FormControlLabel,
   Divider,
 } from "@mui/material";
-import type {
-  ConfigState,
-  Product,
-} from "../types";
-import {
-  applyRules,
-  selectSystem,
-  selectItem,
-} from "../logic/ruleEngine.ts"; // You will create this file next
+import type { ConfigState, Product } from "../types";
+import { applyRules, selectSystem, selectItem } from "../logic/ruleEngine.ts"; // You will create this file next
 
 interface Props {
   state: ConfigState;
@@ -40,32 +32,30 @@ export default function ItemSelector({ state, setState }: Props) {
   // System selection handler
   // --------------------------
 
-const handleSystemSelect = (sku: string) => {
-  const sys = catalog.systems.find((s) => s.sku === sku);
-  if (!sys) return;
+  const handleSystemSelect = (sku: string) => {
+    const sys = catalog.systems.find((s) => s.sku === sku);
+    if (!sys) return;
 
-  setState((prev) => {
-    if (!prev) return prev;                    // <— guard for null
-    let next = selectSystem(sys, prev);        // prev is now non-null
-    if (next.automation) next = applyRules(next);
-    return next;
-  });
-};
-
+    setState((prev) => {
+      if (!prev) return prev; // <— guard for null
+      let next = selectSystem(sys, prev); // prev is now non-null
+      if (next.automation) next = applyRules(next);
+      return next;
+    });
+  };
 
   // --------------------------
   // Option selection handler
   // --------------------------
 
-const handleOptionSelect = (group: string, sku: string) => {
-  setState((prev) => {
-    if (!prev) return prev;                    // <— guard for null
-    let next = selectItem(group, sku, prev);   // prev is now non-null
-    if (next.automation) next = applyRules(next);
-    return next;
-  });
-};
-
+  const handleOptionSelect = (group: string, sku: string) => {
+    setState((prev) => {
+      if (!prev) return prev; // <— guard for null
+      let next = selectItem(group, sku, prev); // prev is now non-null
+      if (next.automation) next = applyRules(next);
+      return next;
+    });
+  };
 
   // --------------------------
   // Group → options
@@ -75,7 +65,6 @@ const handleOptionSelect = (group: string, sku: string) => {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-
       {/* ---------------------- */}
       {/* SYSTEM SELECTION */}
       {/* ---------------------- */}
@@ -101,22 +90,20 @@ const handleOptionSelect = (group: string, sku: string) => {
       {/* AUTOMATION TOGGLE */}
       {/* ---------------------- */}
       <Box>
-
-<FormControlLabel
-  control={
-    <Switch
-      checked={automation}
-      onChange={() =>
-        setState((prev) => {
-          if (!prev) return prev;                // keep null as null safely
-          return { ...prev, automation: !prev.automation };
-        })
-      }
-    />
-  }
-  label="Automation Enabled"
-/>
-
+        <FormControlLabel
+          control={
+            <Switch
+              checked={automation}
+              onChange={() =>
+                setState((prev) => {
+                  if (!prev) return prev; // keep null as null safely
+                  return { ...prev, automation: !prev.automation };
+                })
+              }
+            />
+          }
+          label="Automation Enabled"
+        />
       </Box>
 
       <Divider />

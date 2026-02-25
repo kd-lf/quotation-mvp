@@ -1,4 +1,3 @@
-
 import * as XLSX from "xlsx";
 import { Button } from "@mui/material";
 import { useCallback } from "react";
@@ -37,9 +36,9 @@ export interface Rule {
 }
 
 export interface Catalog {
-  systems: Product[];   // Level 1
-  items: Product[];     // Level >=2
-  groups: string[];     // Ordered groups
+  systems: Product[]; // Level 1
+  items: Product[]; // Level >=2
+  groups: string[]; // Ordered groups
   rules: Rule[];
   bySKU: Map<string, Product>;
 }
@@ -51,142 +50,131 @@ function generateAutoSKU(index: number): string {
   return `AUTO-${String(index).padStart(4, "0")}`;
 }
 
-export default function UploadExcel({
-  onData,
-}: {
-  onData: (catalog: Catalog) => void;
-}) {
-  const handleUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+export default function UploadExcel({ onData }: { onData: (catalog: Catalog) => void }) {
+  const handleUpload = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = evt => {
-      const data = evt.target?.result;
-      if (!data) return;
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const data = evt.target?.result;
+        if (!data) return;
 
-      const workbook = XLSX.read(data as string, { type: "binary" });
+        const workbook = XLSX.read(data as string, { type: "binary" });
 
-      const productsSheet = workbook.Sheets["PRODUCTS"];
-      const rulesSheet = workbook.Sheets["RULES"];
+        const productsSheet = workbook.Sheets["PRODUCTS"];
+        const rulesSheet = workbook.Sheets["RULES"];
 
-      if (!productsSheet || !rulesSheet) {
-        console.error("Workbook must contain PRODUCTS and RULES sheets.");
-        return;
-      }
+        if (!productsSheet || !rulesSheet) {
+          console.error("Workbook must contain PRODUCTS and RULES sheets.");
+          return;
+        }
 
-      const productRows = XLSX.utils.sheet_to_json<any>(productsSheet, {
-        defval: "",
-      });
-      const ruleRows = XLSX.utils.sheet_to_json<any>(rulesSheet, {
-        defval: "",
-      });
-
-      // --------------------------
-      // PARSE PRODUCTS
-      // --------------------------
-      const products: Product[] = [];
-      let autoCount = 1;
-
-      for (const row of productRows) {
-        if (!row.Name) continue;
-
-        const sku =
-          String(row.SKU || "").trim() ||
-          generateAutoSKU(autoCount++);
-
-        products.push({
-          level: Number(row.Level) || 0,
-          group: row.Group?.toString().trim() || "",
-          name: row.Name?.toString().trim() || "",
-          sku,
-          default: String(row.Default ?? "")
-            .toLowerCase()
-            .includes("yes"),
-          price: row.Price ? Number(row.Price) : undefined,
-          currency: row.Currency || undefined,
+        const productRows = XLSX.utils.sheet_to_json<any>(productsSheet, {
+          defval: "",
         });
-      }
+        const ruleRows = XLSX.utils.sheet_to_json<any>(rulesSheet, {
+          defval: "",
+        });
 
-      // --------------------------
-      // SEPARATE SYSTEMS VS ITEMS
-      // --------------------------
-      const systems = products.filter(p => p.level === 1);
-      const items = products.filter(p => p.level > 1);
+        // --------------------------
+        // PARSE PRODUCTS
+        // --------------------------
+        const products: Product[] = [];
+        let autoCount = 1;
 
-      // --------------------------
-      // DETECT GROUP ORDER (by level)
-      // --------------------------
-      const groups = Array.from(
-        new Set(
-          items
-            .sort((a, b) => a.level - b.level)
-            .map(item => item.group)
-        )
-      );
+        for (const row of productRows) {
+          if (!row.Name) continue;
 
-      // --------------------------
-      // PARSE RULES
-      // --------------------------
-      const rules: Rule[] = ruleRows
-        .map((r: any) => {
-          if (!r.RuleID) return null;
+          const sku = String(row.SKU || "").trim() || generateAutoSKU(autoCount++);
 
-          const containsRaw = r.IF_Contains?.toString().trim() || "";
-          const isNegation = containsRaw.startsWith("!");
-
-          const rule: Rule = {
-            id: r.RuleID,
-            enabled: String(r.Enabled ?? "")
+          products.push({
+            level: Number(row.Level) || 0,
+            group: row.Group?.toString().trim() || "",
+            name: row.Name?.toString().trim() || "",
+            sku,
+            default: String(row.Default ?? "")
               .toLowerCase()
               .includes("yes"),
+            price: row.Price ? Number(row.Price) : undefined,
+            currency: row.Currency || undefined,
+          });
+        }
 
-            if: {
-              group: r.IF_Group?.toString().trim() || undefined,
-              sku: r.IF_SKU?.toString().trim() || undefined,
-              contains: !isNegation
-                ? containsRaw || undefined
-                : undefined,
-              notContains: isNegation
-                ? containsRaw.substring(1)
-                : undefined,
-            },
+        // --------------------------
+        // SEPARATE SYSTEMS VS ITEMS
+        // --------------------------
+        const systems = products.filter((p) => p.level === 1);
+        const items = products.filter((p) => p.level > 1);
 
-            then: {
-              action: r.THEN_Action?.toString().trim(),
-              group: r.THEN_Group?.toString().trim(),
-              sku: r.THEN_SKU?.toString().trim() || undefined,
-            },
-          };
+        // --------------------------
+        // DETECT GROUP ORDER (by level)
+        // --------------------------
+        const groups = Array.from(
+          new Set(items.sort((a, b) => a.level - b.level).map((item) => item.group)),
+        );
 
-          return rule;
-        })
-        .filter(Boolean) as Rule[];
+        // --------------------------
+        // PARSE RULES
+        // --------------------------
+        const rules: Rule[] = ruleRows
+          .map((r: any) => {
+            if (!r.RuleID) return null;
 
-      // --------------------------
-      // BUILD SKU INDEX
-      // --------------------------
-      const bySKU = new Map<string, Product>();
-      for (const p of products) {
-        bySKU.set(p.sku, p);
-      }
+            const containsRaw = r.IF_Contains?.toString().trim() || "";
+            const isNegation = containsRaw.startsWith("!");
 
-      // --------------------------
-      // BUILD FINAL CATALOG OBJECT
-      // --------------------------
-      const catalog: Catalog = {
-        systems,
-        items,
-        groups,
-        rules,
-        bySKU,
+            const rule: Rule = {
+              id: r.RuleID,
+              enabled: String(r.Enabled ?? "")
+                .toLowerCase()
+                .includes("yes"),
+
+              if: {
+                group: r.IF_Group?.toString().trim() || undefined,
+                sku: r.IF_SKU?.toString().trim() || undefined,
+                contains: !isNegation ? containsRaw || undefined : undefined,
+                notContains: isNegation ? containsRaw.substring(1) : undefined,
+              },
+
+              then: {
+                action: r.THEN_Action?.toString().trim(),
+                group: r.THEN_Group?.toString().trim(),
+                sku: r.THEN_SKU?.toString().trim() || undefined,
+              },
+            };
+
+            return rule;
+          })
+          .filter(Boolean) as Rule[];
+
+        // --------------------------
+        // BUILD SKU INDEX
+        // --------------------------
+        const bySKU = new Map<string, Product>();
+        for (const p of products) {
+          bySKU.set(p.sku, p);
+        }
+
+        // --------------------------
+        // BUILD FINAL CATALOG OBJECT
+        // --------------------------
+        const catalog: Catalog = {
+          systems,
+          items,
+          groups,
+          rules,
+          bySKU,
+        };
+
+        onData(catalog);
       };
 
-      onData(catalog);
-    };
-
-    reader.readAsBinaryString(file);
-  }, [onData]);
+      reader.readAsBinaryString(file);
+    },
+    [onData],
+  );
 
   return (
     <Button variant="contained" component="label">

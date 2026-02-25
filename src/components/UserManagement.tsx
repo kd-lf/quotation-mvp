@@ -122,7 +122,14 @@ export default function UserManagement({
 
   return (
     <div style={{ marginTop: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 12,
+        }}
+      >
         <h3 style={{ margin: 0 }}>User Management (Prototype)</h3>
       </div>
 
@@ -159,9 +166,7 @@ export default function UserManagement({
           </Button>
 
           {!canEditRoles && (
-            <span style={{ opacity: 0.7 }}>
-              (You don’t have permission to edit users.)
-            </span>
+            <span style={{ opacity: 0.7 }}>(You don’t have permission to edit users.)</span>
           )}
         </div>
       </Paper>
