@@ -1,4 +1,4 @@
-// src/components/UploadExcel.tsx
+// FILE: src/components/UploadExcel.tsx
 import * as XLSX from "xlsx";
 import { Alert, Button, Stack } from "@mui/material";
 import { useCallback, useRef, useState } from "react";
@@ -21,7 +21,6 @@ function parseBomSheet(workbook: XLSX.WorkBook): Map<string, BomLine[]> {
   if (!sheet) return map;
 
   const rows = XLSX.utils.sheet_to_json<any>(sheet, { defval: "" });
-
   for (const r of rows) {
     const parent = toSku(r.Parent);
     const sku = toSku(r.SKU);
@@ -35,7 +34,6 @@ function parseBomSheet(workbook: XLSX.WorkBook): Map<string, BomLine[]> {
     const price = Number.isFinite(priceNum) ? priceNum : undefined;
 
     const line: BomLine = { sku, qty, name, price };
-
     const arr = map.get(parent) ?? [];
     arr.push(line);
     map.set(parent, arr);
@@ -139,13 +137,12 @@ export default function UploadExcel({
 
         setWarnings(nextWarnings);
 
-        // Parse rows after validation
+        // =======================
+        // PARSE PRODUCTS
+        // =======================
         const productRows = XLSX.utils.sheet_to_json<any>(productsSheet!, { defval: "" });
         const ruleRows = XLSX.utils.sheet_to_json<any>(rulesSheet!, { defval: "" });
 
-        // --------------------------
-        // PARSE PRODUCTS
-        // --------------------------
         const products: Product[] = [];
         let autoCount = 1;
 
@@ -183,9 +180,9 @@ export default function UploadExcel({
           ),
         );
 
-        // --------------------------
+        // =======================
         // PARSE RULES
-        // --------------------------
+        // =======================
         const rules: Rule[] = ruleRows
           .map((r: any) => {
             if (!r.RuleID) return null;
@@ -219,9 +216,9 @@ export default function UploadExcel({
           })
           .filter(Boolean) as Rule[];
 
-        // --------------------------
+        // =======================
         // BUILD SKU INDEX
-        // --------------------------
+        // =======================
         const bySKU = new Map<string, Product>();
         for (const p of products) bySKU.set(p.sku, p);
 

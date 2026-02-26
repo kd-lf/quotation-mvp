@@ -10,10 +10,12 @@ import {
   Checkbox,
   ListItemText,
   Collapse,
+  Chip,
 } from "@mui/material";
 
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
 
 import type { ConfigState, Product, SelectionValue } from "../types";
 import { applyRules, selectSystem, selectItem } from "../logic/ruleEngine.ts";
@@ -23,6 +25,9 @@ const SOFTWARE_GROUP = "Software Options"; // Must match PRODUCTS sheet
 interface Props {
   state: ConfigState;
   setState: React.Dispatch<React.SetStateAction<ConfigState | null>>;
+  priceBookName: string | null;
+  priceBookEntries: number | null;
+  priceBookUploadedAt: Date | null;
 }
 
 const asArray = (v: SelectionValue | undefined): string[] => (!v ? [] : Array.isArray(v) ? v : [v]);
@@ -33,7 +38,14 @@ const asArray = (v: SelectionValue | undefined): string[] => (!v ? [] : Array.is
  * - Persists BOM selections inside state.selectedBom
  * - Works for system BOM and group-level BOMs
  */
-export default function ItemSelector({ state, setState }: Props) {
+
+export default function ItemSelector({
+  state,
+  setState,
+  priceBookName,
+  priceBookEntries,
+  priceBookUploadedAt,
+}: Props) {
   const { catalog, selections, system, selectedBom } = state;
 
   const getOptionsForGroup = (group: string): Product[] =>
@@ -184,6 +196,17 @@ export default function ItemSelector({ state, setState }: Props) {
   // -------------------------------------------------------------
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      {priceBookName && (
+        <Chip
+          icon={<AccessTimeIcon />}
+          label={`Price Book: ${priceBookName} • ${
+            priceBookEntries ?? 0
+          } entries • Uploaded ${priceBookUploadedAt?.toLocaleString()}`}
+          color="primary"
+          variant="outlined"
+          sx={{ mt: 2, fontSize: "0.8rem" }}
+        />
+      )}
       {/* SYSTEM SELECTION */}
       <Box>
         <FormControl fullWidth sx={{ mt: 1 }}>

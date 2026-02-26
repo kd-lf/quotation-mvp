@@ -1,3 +1,4 @@
+// FILE: src/components/UploadPriceBook.tsx
 import * as XLSX from "xlsx";
 import { Button } from "@mui/material";
 import { useCallback, useRef, useState } from "react";
@@ -6,9 +7,11 @@ import { buildMasterPriceMap } from "../logic/masterPrice";
 export default function UploadPriceBook({
   disabled,
   onPrices,
+  onInfo, // <-- NEW
 }: {
   disabled?: boolean;
   onPrices: (priceMap: Map<string, number>) => void;
+  onInfo?: (info: { name: string; uploadedAt: Date }) => void; // <-- NEW
 }) {
   const ref = useRef<HTMLInputElement | null>(null);
   const [busy, setBusy] = useState(false);
@@ -17,6 +20,9 @@ export default function UploadPriceBook({
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
+
+      // NEW: tell App the file name + upload time immediately
+      onInfo?.({ name: file.name, uploadedAt: new Date() });
 
       setBusy(true);
       try {
@@ -29,7 +35,7 @@ export default function UploadPriceBook({
         if (ref.current) ref.current.value = "";
       }
     },
-    [onPrices],
+    [onPrices, onInfo],
   );
 
   return (
