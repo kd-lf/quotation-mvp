@@ -1,5 +1,5 @@
 // FILE: src/App.tsx
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Container, Box } from "@mui/material";
 import Logo from "./components/Logo";
 import UploadExcel from "./components/UploadExcel";
@@ -14,8 +14,6 @@ import expandConfigToQuoteItems from "./logic/expandConfigToQuoteItems";
 export type AppRole = "SuperUser" | "InternalUser" | "ExternalUser";
 
 export default function App() {
-  const [role, setRole] = useState<AppRole>("SuperUser");
-  const [page, setPage] = useState<"quote" | "users">("quote");
 
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [state, setState] = useState<ConfigState | null>(null);
@@ -27,11 +25,7 @@ export default function App() {
   const [priceBookUploadedAt, setPriceBookUploadedAt] = useState<Date | null>(null);
 
   // Load saved role
-  useEffect(() => {
-    const saved = localStorage.getItem("role") as AppRole | null;
-    if (saved) setRole(saved);
-  }, []);
-
+ 
   // when product book uploads:
   const onCatalog = (cat: Catalog) => {
     const priced = priceMap ? applyMasterPricesAndBomRollups(cat, priceMap) : cat;
