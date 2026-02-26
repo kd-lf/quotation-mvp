@@ -60,7 +60,8 @@ export interface ConfigState {
   system?: Product; // selected Level-1 system
   selections: Map<string, SelectionValue>; // group -> sku
   catalog: Catalog;
-  automation: boolean; // automation ON/OFF (your override toggle)
+  automation: boolean; // automation ON/OFF (your override toggle);
+  selectedBom: Map<string, Set<string>>;
 }
 
 // ---------- (Optional) UI helpers ----------

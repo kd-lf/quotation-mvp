@@ -12,6 +12,8 @@ import type { Catalog, ConfigState } from "./types";
 import { createInitialState } from "./logic/ruleEngine";
 import { applyMasterPricesAndBomRollups } from "./logic/pricing";
 
+import expandConfigToQuoteItems from "./logic/expandConfigToQuoteItems";
+
 // ---- Legacy summary line type (kept so QuoteSummary keeps working) ----
 export type AppRole = "SuperUser" | "InternalUser" | "ExternalUser";
 
@@ -74,8 +76,7 @@ export default function App() {
 
       const priced = applyMasterPricesAndBomRollups(prev, pm);
 
-      console.log("priced.bySKU has testSku:", priced.bySKU.has(testSku));
-      console.log("priced.bySKU.get(testSku)?.price:", priced.bySKU.get(testSku)?.price);
+      console.log("Price map lookup test:", pm.get(testSku.trim().toUpperCase()));
 
       setState((s) => (s ? { ...s, catalog: priced } : s));
 
@@ -224,7 +225,12 @@ export default function App() {
           {state && perms.canQuote && (
             <>
               <ItemSelector state={state} setState={setState} />
-              <QuoteSummary items={itemsForSummary} automationEnabled={state.automation} />
+
+              <QuoteSummary
+                items={expandConfigToQuoteItems({ ...state, priceMap })}
+                automationEnabled={state.automation}
+                validDays={30}
+              />
             </>
           )}
         </>
