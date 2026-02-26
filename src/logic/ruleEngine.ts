@@ -1,13 +1,7 @@
 // FILE: src/logic/ruleEngine.ts
 // Lightweight rule engine for the Excel E3 model (PRODUCTS + RULES)
 
-import type {
-  Catalog,
-  ConfigState,
-  Product,
-  RuleAction,
-  RuleCondition,
-} from "../types";
+import type { Catalog, ConfigState, Product, RuleAction, RuleCondition } from "../types";
 
 /* =================================================================================
  * Small utilities
@@ -31,15 +25,10 @@ function getOptionsForGroup(catalog: Catalog, group: string): Product[] {
   return catalog.items.filter((i) => i.group === group);
 }
 
-function getSelectedProductsForGroup(
-  state: ConfigState,
-  group: string
-): Product[] {
+function getSelectedProductsForGroup(state: ConfigState, group: string): Product[] {
   const v = state.selections.get(group);
   const skus = asArray(v);
-  return skus
-    .map((sku) => state.catalog.bySKU.get(sku))
-    .filter((p): p is Product => !!p);
+  return skus.map((sku) => state.catalog.bySKU.get(sku)).filter((p): p is Product => !!p);
 }
 
 /* =================================================================================
@@ -58,11 +47,7 @@ function applyGroupDefaults(state: ConfigState): ConfigState {
   return next;
 }
 
-function setDefaultInGroup(
-  state: ConfigState,
-  group: string,
-  sku?: string
-): ConfigState {
+function setDefaultInGroup(state: ConfigState, group: string, sku?: string): ConfigState {
   const next = cloneState(state);
 
   if (group && sku) {
@@ -71,9 +56,7 @@ function setDefaultInGroup(
       next.selections.set(group, sku);
     }
   } else if (group) {
-    const fallback = getOptionsForGroup(next.catalog, group).find(
-      (o) => o.default
-    );
+    const fallback = getOptionsForGroup(next.catalog, group).find((o) => o.default);
     if (fallback) next.selections.set(group, fallback.sku);
   }
 
@@ -86,9 +69,7 @@ function requireSelection(state: ConfigState, group: string): ConfigState {
   const options = getOptionsForGroup(next.catalog, group);
   const current = asArray(next.selections.get(group));
 
-  const valid = current.filter((sku) =>
-    options.some((o) => o.sku === sku)
-  );
+  const valid = current.filter((sku) => options.some((o) => o.sku === sku));
 
   if (valid.length > 0) {
     next.selections.set(group, valid.length === 1 ? valid[0] : valid);
@@ -128,15 +109,11 @@ function autoSelectSku(state: ConfigState, sku?: string): ConfigState {
  * - If IF_Group equals the selected system's group → system rule
  * - Otherwise → ONLY match inside that exact group
  */
-export function ruleMatches(
-  condition: RuleCondition,
-  state: ConfigState
-): boolean {
+export function ruleMatches(condition: RuleCondition, state: ConfigState): boolean {
   const targetGroup = condition.group?.trim();
   const systemGroup = state.system?.group;
 
-const appliesToSystem =
-  !targetGroup || targetGroup.toLowerCase() === "system";
+  const appliesToSystem = !targetGroup || targetGroup.toLowerCase() === "system";
 
   const candidates: Product[] = appliesToSystem
     ? state.system
@@ -151,16 +128,9 @@ const appliesToSystem =
 
     const subjectName = (subject.name || "").toUpperCase();
 
-    if (
-      condition.contains &&
-      !subjectName.includes(condition.contains.toUpperCase())
-    )
-      return false;
+    if (condition.contains && !subjectName.includes(condition.contains.toUpperCase())) return false;
 
-    if (
-      condition.notContains &&
-      subjectName.includes(condition.notContains.toUpperCase())
-    )
+    if (condition.notContains && subjectName.includes(condition.notContains.toUpperCase()))
       return false;
 
     return true;
@@ -171,10 +141,7 @@ const appliesToSystem =
  * Rule actions
  * ================================================================================= */
 
-export function applyRuleAction(
-  action: RuleAction,
-  state: ConfigState
-): ConfigState {
+export function applyRuleAction(action: RuleAction, state: ConfigState): ConfigState {
   const { action: kind, group, sku } = action;
 
   switch (kind) {
@@ -217,11 +184,7 @@ export function selectSystem(system: Product, state: ConfigState): ConfigState {
 
 const MULTI_GROUPS = new Set<string>(["Software Options"]);
 
-export function selectItem(
-  group: string,
-  sku: string,
-  state: ConfigState
-): ConfigState {
+export function selectItem(group: string, sku: string, state: ConfigState): ConfigState {
   const next = cloneState(state);
 
   const product = next.catalog.bySKU.get(sku);
@@ -229,9 +192,7 @@ export function selectItem(
 
   if (MULTI_GROUPS.has(group)) {
     const current = asArray(next.selections.get(group));
-    const updated = current.includes(sku)
-      ? current.filter((s) => s !== sku)
-      : [...current, sku];
+    const updated = current.includes(sku) ? current.filter((s) => s !== sku) : [...current, sku];
 
     if (updated.length === 0) next.selections.delete(group);
     else next.selections.set(group, updated);

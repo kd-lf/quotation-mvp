@@ -153,9 +153,9 @@ export default function UploadExcel({
           if (!row.Name) continue;
 
           const rawSku = String(row.SKU ?? "").trim();
-const isPlaceholder = rawSku === "" || rawSku === "-" || /^n\/?a$/i.test(rawSku);
+          const isPlaceholder = rawSku === "" || rawSku === "-" || /^n\/?a$/i.test(rawSku);
 
-const sku = isPlaceholder ? generateAutoSKU(autoCount++) : rawSku;
+          const sku = isPlaceholder ? generateAutoSKU(autoCount++) : rawSku;
 
           products.push({
             level: Number(row.Level) || 0,

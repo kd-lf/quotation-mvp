@@ -47,26 +47,28 @@ export default function App() {
   const [priceMap, setPriceMap] = useState<Map<string, number> | null>(null);
 
   // ===== DEBUG GROUP SANITY CHECK =====
-if (catalog) {
-  console.log("=== RAW GROUPS FROM EXCEL ===");
-  catalog.groups.forEach((g: string, idx: number) => {
-    console.log(
-      `GROUP[${idx}]:`,
-      JSON.stringify(g),
-      g.split("").map((c: string) => c.charCodeAt(0))
-    );
-  });
+  if (catalog) {
+    console.log("=== RAW GROUPS FROM EXCEL ===");
+    catalog.groups.forEach((g: string, idx: number) => {
+      console.log(
+        `GROUP[${idx}]:`,
+        JSON.stringify(g),
+        g.split("").map((c: string) => c.charCodeAt(0)),
+      );
+    });
 
-  console.log("=== PRODUCT GROUPS ===");
-  catalog.items.forEach((i: any) => {
-    console.log(
-      `SKU=${i.sku}`,
-      "group=", JSON.stringify(i.group),
-      "chars=", i.group.split("").map((c: string) => c.charCodeAt(0))
-    );
-  });
-}
-// ===== END DEBUG =====
+    console.log("=== PRODUCT GROUPS ===");
+    catalog.items.forEach((i: any) => {
+      console.log(
+        `SKU=${i.sku}`,
+        "group=",
+        JSON.stringify(i.group),
+        "chars=",
+        i.group.split("").map((c: string) => c.charCodeAt(0)),
+      );
+    });
+  }
+  // ===== END DEBUG =====
 
   // load role from storage
   useEffect(() => {
@@ -167,8 +169,6 @@ if (catalog) {
                 : "Please ask a SuperUser to upload the product file."}
             </div>
           )}
-
-
 
           {state && perms.canQuote && (
             <>
