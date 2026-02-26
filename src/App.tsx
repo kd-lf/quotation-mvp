@@ -90,7 +90,6 @@ export default function App() {
     setPriceMap(null);
   };
 
-
   return (
     <Container maxWidth="lg" style={{ paddingTop: 24, paddingBottom: 24 }}>
       <Logo />

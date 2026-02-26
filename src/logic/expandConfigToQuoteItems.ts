@@ -1,3 +1,4 @@
+// FILE: src/logic/expandConfigToQuoteItems.ts
 import type { Product } from "../types";
 
 export default function expandConfigToQuoteItems(state: any) {
@@ -6,84 +7,118 @@ export default function expandConfigToQuoteItems(state: any) {
   const { system, catalog, selections, selectedBom, priceMap } = state;
   if (!system) return result;
 
-  // Normalize SKU for robust lookups (trim, remove spaces/nbsp, uppercase)
+  // Normalize SKU for robust lookups
   const normSku = (s: string) =>
     String(s)
       .replace(/[\s\u00A0]/g, "")
       .trim()
       .toUpperCase();
 
-  // Price priority: 1) price book, 2) BOM-line price, 3) PRODUCTS price, 4) 0
+  // Price priority: priceBook → BOM price → PRODUCTS price → 0
   const getPrice = (sku: string, bomFallback?: number) => {
     const key = normSku(sku);
-    if (priceMap?.has(key)) return priceMap.get(key)!; // 1) master price book
-    if (typeof bomFallback === "number") return bomFallback; // 2) BOM price if present
-    const p = catalog.bySKU.get(sku)?.price; // 3) product price (PRODUCTS sheet)
-    return typeof p === "number" ? p : 0; // 4) default
+
+    if (priceMap?.has(key)) return priceMap.get(key)!; // 1) price book
+    if (typeof bomFallback === "number") return bomFallback; // 2) BOM sheet price
+    const p = catalog.bySKU.get(sku)?.price; // 3) product sheet price
+
+    return typeof p === "number" ? p : 0; // 4) fallback
   };
 
   // ------------------------------------------------------
-  // 1) System header (shown, not priced)
-  // ------------------------------------------------------
-  result.push({
-    item: system.name,
-    sku: system.sku,
-    isHeader: true,
-    checked: true,
-  });
-
-  // ------------------------------------------------------
-  // 2) System BOM (optional children with checkboxes)
+  // 1) SYSTEM
   // ------------------------------------------------------
   const sysBom = catalog.bomByParentSku.get(system.sku) ?? [];
   const sysSelected = selectedBom.get(system.sku) ?? new Set<string>();
 
-  for (const line of sysBom) {
-    const p = catalog.bySKU.get(line.sku);
+  if (sysBom.length > 0) {
+    //
+    // System WITH children → produce HEADER (true header, no price)
+    //
     result.push({
-      item: p?.name ?? line.name ?? line.sku,
-      sku: line.sku,
-      qty: line.qty,
-      price: getPrice(line.sku, line.price),
+      item: system.name,
+      sku: system.sku,
+      isHeader: true,
+      checked: true,
+    });
+
+    for (const line of sysBom) {
+      const p = catalog.bySKU.get(line.sku);
+      result.push({
+        item: p?.name ?? line.name ?? line.sku,
+        sku: line.sku,
+        qty: line.qty,
+        price: getPrice(line.sku, line.price),
+        isHeader: false,
+        checked: sysSelected.has(line.sku),
+      });
+    }
+  } else {
+    //
+    // System has NO children → SINGLE priced bold row
+    //
+    result.push({
+      item: system.name,
+      sku: system.sku,
+      qty: 1,
+      price: getPrice(system.sku),
       isHeader: false,
-      checked: sysSelected.has(line.sku),
+      isBoldParent: true, // ⭐ bold BUT priced
+      checked: true,
     });
   }
 
   // ------------------------------------------------------
-  // 3) Group selections + their BOM
+  // 3) GROUP SELECTIONS + BOM
   // ------------------------------------------------------
   for (const group of catalog.groups) {
-    const sel = selections.get(group);
-    if (!sel) continue;
+    const selectedValues = selections.get(group);
+    if (!selectedValues) continue;
 
-    const groupSkus = Array.isArray(sel) ? sel : [sel];
+    const skus = Array.isArray(selectedValues) ? selectedValues : [selectedValues];
 
-    for (const sku of groupSkus) {
+    for (const sku of skus) {
       const p: Product | undefined = catalog.bySKU.get(sku);
       if (!p) continue;
 
-      // Header row for the chosen option
-      result.push({
-        item: p.name,
-        sku: p.sku,
-        isHeader: true,
-        checked: true,
-      });
-
-      // BOM children for that option
       const bom = catalog.bomByParentSku.get(p.sku) ?? [];
-      const selSet = selectedBom.get(p.sku) ?? new Set<string>();
+      const selectedChildren = selectedBom.get(p.sku) ?? new Set<string>();
 
-      for (const line of bom) {
-        const lp = catalog.bySKU.get(line.sku);
+      if (bom.length > 0) {
+        //
+        // Parent WITH children → HEADER + children
+        //
         result.push({
-          item: lp?.name ?? line.name ?? line.sku,
-          sku: line.sku,
-          qty: line.qty,
-          price: getPrice(line.sku, line.price),
+          item: p.name,
+          sku: p.sku,
+          isHeader: true,
+          checked: true,
+        });
+
+        for (const line of bom) {
+          const lp = catalog.bySKU.get(line.sku);
+
+          result.push({
+            item: lp?.name ?? line.name ?? line.sku,
+            sku: line.sku,
+            qty: line.qty,
+            price: getPrice(line.sku, line.price),
+            isHeader: false,
+            checked: selectedChildren.has(line.sku),
+          });
+        }
+      } else {
+        //
+        // Parent WITHOUT children → SINGLE bold priced row
+        //
+        result.push({
+          item: p.name,
+          sku: p.sku,
+          qty: 1,
+          price: getPrice(p.sku),
           isHeader: false,
-          checked: selSet.has(line.sku),
+          isBoldParent: true, // ⭐ bold BUT priced
+          checked: true,
         });
       }
     }
