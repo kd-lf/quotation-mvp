@@ -152,7 +152,10 @@ export default function UploadExcel({
         for (const row of productRows) {
           if (!row.Name) continue;
 
-          const sku = String(row.SKU || "").trim() || generateAutoSKU(autoCount++);
+          const rawSku = String(row.SKU ?? "").trim();
+const isPlaceholder = rawSku === "" || rawSku === "-" || /^n\/?a$/i.test(rawSku);
+
+const sku = isPlaceholder ? generateAutoSKU(autoCount++) : rawSku;
 
           products.push({
             level: Number(row.Level) || 0,
