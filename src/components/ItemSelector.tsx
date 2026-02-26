@@ -6,9 +6,6 @@ import {
   MenuItem,
   Typography,
   Box,
-  Switch,
-  FormControlLabel,
-  Divider,
   Stack,
   Checkbox,
   ListItemText,
@@ -37,7 +34,7 @@ const asArray = (v: SelectionValue | undefined): string[] => (!v ? [] : Array.is
  * - Works for system BOM and group-level BOMs
  */
 export default function ItemSelector({ state, setState }: Props) {
-  const { catalog, selections, automation, system, selectedBom } = state;
+  const { catalog, selections, system, selectedBom } = state;
 
   const getOptionsForGroup = (group: string): Product[] =>
     catalog.items.filter((i) => i.group === group);
@@ -189,8 +186,6 @@ export default function ItemSelector({ state, setState }: Props) {
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
       {/* SYSTEM SELECTION */}
       <Box>
-        <Typography variant="h6">Select HiPAP System</Typography>
-
         <FormControl fullWidth sx={{ mt: 1 }}>
           <InputLabel>System</InputLabel>
           <Select
@@ -211,24 +206,6 @@ export default function ItemSelector({ state, setState }: Props) {
       </Box>
 
       {/* AUTOMATION TOGGLE */}
-      <Box>
-        <FormControlLabel
-          control={
-            <Switch
-              checked={automation}
-              onChange={() =>
-                setState((prev) => {
-                  if (!prev) return prev;
-                  return { ...prev, automation: !prev.automation };
-                })
-              }
-            />
-          }
-          label="Automation Enabled"
-        />
-      </Box>
-
-      <Divider />
 
       {/* GROUP SELECTIONS */}
       {catalog.groups.map((group) => {
@@ -241,8 +218,6 @@ export default function ItemSelector({ state, setState }: Props) {
 
         return (
           <Box key={group} sx={{ my: 2 }}>
-            <Typography variant="h6">{group}</Typography>
-
             <FormControl fullWidth sx={{ mt: 1 }}>
               <InputLabel>{group}</InputLabel>
 
@@ -293,8 +268,6 @@ export default function ItemSelector({ state, setState }: Props) {
 
             {/* BOM under selected group option */}
             {renderBom(parentSkuForBom)}
-
-            <Divider sx={{ mt: 2 }} />
           </Box>
         );
       })}
