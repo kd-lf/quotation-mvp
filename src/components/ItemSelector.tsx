@@ -12,7 +12,14 @@ import {
   Stack,
   Checkbox,
   ListItemText,
+  Collapse,
+  IconButton,
 } from "@mui/material";
+
+
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+
 
 import type { ConfigState, Product, SelectionValue } from "../types";
 import { applyRules, selectSystem, selectItem } from "../logic/ruleEngine.ts";
@@ -91,39 +98,67 @@ export default function ItemSelector({ state, setState }: Props) {
   // --------------------------
   // Render BOM (with checkboxes)
   // --------------------------
-  const renderBom = (parentSku?: string) => {
-    const bomLines = bomForSku(parentSku);
-    if (!bomLines?.length) return null;
 
-    // Auto-select BOM children the first time a BOM appears
-    if (parentSku && bomLines.length) {
-      ensureBomPreselected(parentSku, bomLines);
-    }
+const renderBom = (parentSku?: string) => {
+  const bomLines = bomForSku(parentSku);
+  if (!bomLines?.length) return null;
 
-    const selectedSet = selectedBom.get(parentSku!) ?? new Set();
+  const [expanded, setExpanded] = React.useState(false);
 
-    const toggleBom = (childSku: string) => {
-      setState((prev) => {
-        if (!prev) return prev;
+  // Preselect BOM children first time
+  if (parentSku && bomLines.length) {
+    ensureBomPreselected(parentSku, bomLines);
+  }
 
-        const map = new Map(prev.selectedBom);
-        const set = new Set(map.get(parentSku!) ?? []);
+  const selectedSet = selectedBom.get(parentSku!) ?? new Set();
 
-        if (set.has(childSku)) set.delete(childSku);
-        else set.add(childSku);
+  // ✔ Count only checked
+  const checkedCount = Array.from(selectedSet).length;
 
-        map.set(parentSku!, set);
-        return { ...prev, selectedBom: map };
-      });
-    };
+  // ✔ Total count
+  const totalCount = bomLines.length;
 
-    return (
-      <Box sx={{ mt: 1, ml: 1 }}>
-        <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-          Includes:
+  const toggleBom = (childSku: string) => {
+    setState((prev) => {
+      if (!prev) return prev;
+
+      const map = new Map(prev.selectedBom);
+      const set = new Set(map.get(parentSku!) ?? []);
+
+      if (set.has(childSku)) set.delete(childSku);
+      else set.add(childSku);
+
+      map.set(parentSku!, set);
+      return { ...prev, selectedBom: map };
+    });
+  };
+
+  return (
+    <Box sx={{ mt: 1, ml: 1 }}>
+      {/* Collapsible header */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          cursor: "pointer",
+          userSelect: "none",
+        }}
+        onClick={() => setExpanded((e) => !e)}
+      >
+        {expanded ? (
+          <ExpandLessIcon fontSize="small" sx={{ mr: 0.5 }} />
+        ) : (
+          <ExpandMoreIcon fontSize="small" sx={{ mr: 0.5 }} />
+        )}
+
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          Includes {checkedCount} / {totalCount}
         </Typography>
+      </Box>
 
-        <Stack spacing={0.2}>
+      {/* Collapsing content */}
+      <Collapse in={expanded} timeout="auto" unmountOnExit>
+        <Stack spacing={0.2} sx={{ mt: 1 }}>
           {bomLines.map((line, idx) => {
             const p = catalog.bySKU.get(line.sku);
             const label = p?.name ?? line.name ?? line.sku;
@@ -138,7 +173,6 @@ export default function ItemSelector({ state, setState }: Props) {
                   checked={selectedSet.has(line.sku)}
                   onChange={() => toggleBom(line.sku)}
                 />
-
                 <Typography variant="body2" color="text.secondary">
                   {line.qty} × {line.sku} — {label}
                 </Typography>
@@ -146,9 +180,11 @@ export default function ItemSelector({ state, setState }: Props) {
             );
           })}
         </Stack>
-      </Box>
-    );
-  };
+      </Collapse>
+    </Box>
+  );
+};
+
 
   // -------------------------------------------------------------
   // UI (system selector, automation toggle, group selectors, BOM)
