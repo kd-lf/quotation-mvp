@@ -256,6 +256,7 @@ export function createInitialState(catalog: Catalog): ConfigState {
     system: undefined,
     selections: new Map(),
     automation: true,
+    selectedBom: new Map(),
   };
 }
 ``;

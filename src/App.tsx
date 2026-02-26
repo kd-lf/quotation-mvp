@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Container, Box } from "@mui/material";
 
 import Logo from "./components/Logo";
@@ -90,81 +90,6 @@ export default function App() {
     setPriceMap(null);
   };
 
-  const itemsForSummary: ItemRow[] = useMemo(() => {
-    if (!state) return [];
-
-    const out: ItemRow[] = [];
-    const bom = state.catalog.bomByParentSku;
-
-    const normSku = (s: string) =>
-      String(s)
-        .replace(/[\s\u00A0]/g, "")
-        .trim()
-        .toUpperCase();
-
-    const priceFromMap = (sku: string) => priceMap?.get(normSku(sku));
-
-    const asArray = (v: string | string[] | undefined): string[] =>
-      !v ? [] : Array.isArray(v) ? v : [v];
-
-    const expandSku = (parentSku: string) => {
-      const parent = state.catalog.bySKU.get(parentSku);
-      if (!parent) return;
-
-      const bomLines = bom?.get(parentSku);
-
-      if (bomLines?.length) {
-        // Parent header (Mode A: shown but not priced)
-        out.push({
-          item: parent.name,
-          sku: parent.sku,
-          price: 0,
-          currency: parent.currency ?? "NOK",
-          qty: 1,
-          checked: true,
-          isHeader: true,
-        });
-
-        // Children (priced via priceMap first, then BOM sheet fallback)
-        for (const line of bomLines) {
-          const child = state.catalog.bySKU.get(line.sku); // often undefined (BOM-only SKUs)
-
-          const unit = child?.price ?? priceFromMap(line.sku) ?? line.price ?? 0;
-
-          out.push({
-            item: child?.name ?? line.name ?? line.sku,
-            sku: String(line.sku),
-            price: unit,
-            currency: child?.currency ?? parent.currency ?? "NOK",
-            qty: line.qty,
-            checked: true,
-            parentSku,
-          });
-        }
-      } else {
-        // Normal leaf item (no BOM)
-        out.push({
-          item: parent.name,
-          sku: parent.sku,
-          price: parent.price ?? priceFromMap(parent.sku) ?? 0,
-          currency: parent.currency ?? "NOK",
-          qty: 1,
-          checked: true,
-        });
-      }
-    };
-
-    // System first
-    if (state.system) expandSku(state.system.sku);
-
-    // Then selected groups
-    for (const group of state.catalog.groups) {
-      const skus = asArray(state.selections.get(group));
-      for (const sku of skus) expandSku(sku);
-    }
-
-    return out;
-  }, [state, priceMap]);
 
   return (
     <Container maxWidth="lg" style={{ paddingTop: 24, paddingBottom: 24 }}>

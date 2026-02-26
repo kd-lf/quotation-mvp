@@ -1,5 +1,4 @@
-// FILE: src/logic/expandConfigToQuoteItems.ts
-import type { Catalog, Product } from "../types";
+import type { Product } from "../types";
 
 export default function expandConfigToQuoteItems(state: any) {
   const result: any[] = [];
