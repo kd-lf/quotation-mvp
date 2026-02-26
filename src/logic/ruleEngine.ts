@@ -111,7 +111,6 @@ function autoSelectSku(state: ConfigState, sku?: string): ConfigState {
  */
 export function ruleMatches(condition: RuleCondition, state: ConfigState): boolean {
   const targetGroup = condition.group?.trim();
-  const systemGroup = state.system?.group;
 
   const appliesToSystem = !targetGroup || targetGroup.toLowerCase() === "system";
 
