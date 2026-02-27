@@ -18,6 +18,8 @@ function cloneState(state: ConfigState): ConfigState {
   return {
     ...state,
     selections: new Map(state.selections),
+    selectedBom: new Map(state.selectedBom),
+    quantities: new Map(state.quantities),
   };
 }
 
@@ -224,5 +226,6 @@ export function createInitialState(catalog: Catalog): ConfigState {
     selections: new Map(),
     automation: true,
     selectedBom: new Map(),
+    quantities: new Map(),
   };
 }

@@ -1,76 +1,98 @@
-import type { Product } from "../types";
+import type { ConfigState, Product } from "../types";
 
-export default function expandConfigToQuoteItems(state: any) {
-  const result: any[] = [];
+type QuoteItem = {
+  item: string;
+  sku: string;
+  qty?: number;
+  price?: number;
+  isHeader?: boolean;
+  checked?: boolean;
+  isBoldParent?: boolean;
+};
 
-  const { system, catalog, selections, selectedBom, priceMap, negotiatedPriceMap } = state;
+const qtyKey = (parentSku: string, sku: string) => `${parentSku}::${sku}`;
+
+export default function expandConfigToQuoteItems(state: ConfigState & {
+  priceMap?: Map<string, number> | null;
+  negotiatedPriceMap?: Map<string, number> | null;
+}) {
+  const result: QuoteItem[] = [];
+
+  const { system, catalog, selections, selectedBom, priceMap, negotiatedPriceMap, quantities } = state;
   if (!system) return result;
 
-  // Normalize SKU for robust lookups
-  const normSku = (s: string) =>
-    String(s)
-      .replace(/[\s\u00A0]/g, "")
-      .trim()
-      .toUpperCase();
+  const normSku = (s: string) => String(s).replace(/[\s\u00A0]/g, "").trim().toUpperCase();
 
-  // Price priority: negotiated quote → priceBook → BOM price → PRODUCTS price → 0
   const getPrice = (sku: string, bomFallback?: number) => {
     const key = normSku(sku);
 
-    if (negotiatedPriceMap?.has(key)) return negotiatedPriceMap.get(key)!; // 0) negotiated quote
-    if (priceMap?.has(key)) return priceMap.get(key)!; // 1) price book
-    if (typeof bomFallback === "number") return bomFallback; // 2) BOM sheet price
-    const p = catalog.bySKU.get(sku)?.price; // 3) product sheet price
+    if (negotiatedPriceMap?.has(key)) return negotiatedPriceMap.get(key)!;
+    if (priceMap?.has(key)) return priceMap.get(key)!;
+    if (typeof bomFallback === "number") return bomFallback;
+    const p = catalog.bySKU.get(sku)?.price;
 
-    return typeof p === "number" ? p : 0; // 4) fallback
+    return typeof p === "number" ? p : 0;
   };
 
-  // ------------------------------------------------------
-  // 1) SYSTEM
-  // ------------------------------------------------------
+  const getQty = (parentSku: string, sku: string, defaultQty: number) => {
+    const existing = quantities.get(qtyKey(parentSku, sku));
+    return typeof existing === "number" ? existing : defaultQty;
+  };
+
+  const addParentWithBom = (
+    parent: Product,
+    bom: Array<{ sku: string; qty: number; name?: string; price?: number }>,
+    selectedChildren: Set<string>,
+  ) => {
+    let parentPrice = 0;
+
+    for (const line of bom) {
+      const qty = getQty(parent.sku, line.sku, line.qty);
+      if (!selectedChildren.has(line.sku) || qty <= 0) continue;
+      parentPrice += getPrice(line.sku, line.price) * qty;
+    }
+
+    result.push({
+      item: parent.name,
+      sku: parent.sku,
+      isHeader: true,
+      checked: true,
+      price: parentPrice,
+    });
+
+    for (const line of bom) {
+      const p = catalog.bySKU.get(line.sku);
+      const qty = getQty(parent.sku, line.sku, line.qty);
+
+      result.push({
+        item: p?.name ?? line.name ?? line.sku,
+        sku: line.sku,
+        qty,
+        price: getPrice(line.sku, line.price),
+        isHeader: false,
+        checked: selectedChildren.has(line.sku) && qty > 0,
+      });
+    }
+  };
+
   const sysBom = catalog.bomByParentSku.get(system.sku) ?? [];
   const sysSelected = selectedBom.get(system.sku) ?? new Set<string>();
 
   if (sysBom.length > 0) {
-    //
-    // System WITH children → produce HEADER (true header, no price)
-    //
-    result.push({
-      item: system.name,
-      sku: system.sku,
-      isHeader: true,
-      checked: true,
-    });
-
-    for (const line of sysBom) {
-      const p = catalog.bySKU.get(line.sku);
-      result.push({
-        item: p?.name ?? line.name ?? line.sku,
-        sku: line.sku,
-        qty: line.qty,
-        price: getPrice(line.sku, line.price),
-        isHeader: false,
-        checked: sysSelected.has(line.sku),
-      });
-    }
+    addParentWithBom(system, sysBom, sysSelected);
   } else {
-    //
-    // System has NO children → SINGLE priced bold row
-    //
+    const qty = getQty(system.sku, system.sku, 1);
     result.push({
       item: system.name,
       sku: system.sku,
-      qty: 1,
+      qty,
       price: getPrice(system.sku),
       isHeader: false,
-      isBoldParent: true, // ⭐ bold BUT priced
-      checked: true,
+      isBoldParent: true,
+      checked: qty > 0,
     });
   }
 
-  // ------------------------------------------------------
-  // 3) GROUP SELECTIONS + BOM
-  // ------------------------------------------------------
   for (const group of catalog.groups) {
     const selectedValues = selections.get(group);
     if (!selectedValues) continue;
@@ -85,40 +107,17 @@ export default function expandConfigToQuoteItems(state: any) {
       const selectedChildren = selectedBom.get(p.sku) ?? new Set<string>();
 
       if (bom.length > 0) {
-        //
-        // Parent WITH children → HEADER + children
-        //
-        result.push({
-          item: p.name,
-          sku: p.sku,
-          isHeader: true,
-          checked: true,
-        });
-
-        for (const line of bom) {
-          const lp = catalog.bySKU.get(line.sku);
-
-          result.push({
-            item: lp?.name ?? line.name ?? line.sku,
-            sku: line.sku,
-            qty: line.qty,
-            price: getPrice(line.sku, line.price),
-            isHeader: false,
-            checked: selectedChildren.has(line.sku),
-          });
-        }
+        addParentWithBom(p, bom, selectedChildren);
       } else {
-        //
-        // Parent WITHOUT children → SINGLE bold priced row
-        //
+        const qty = getQty(p.sku, p.sku, 1);
         result.push({
           item: p.name,
           sku: p.sku,
-          qty: 1,
+          qty,
           price: getPrice(p.sku),
           isHeader: false,
-          isBoldParent: true, // ⭐ bold BUT priced
-          checked: true,
+          isBoldParent: true,
+          checked: qty > 0,
         });
       }
     }

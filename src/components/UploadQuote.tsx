@@ -63,6 +63,14 @@ export default function UploadQuote({
     }
     base.selectedBom = bomMap;
 
+    const quantityMap = new Map<string, number>();
+    for (const [key, qty] of Object.entries(metadata.quantities ?? {})) {
+      const value = Number(qty);
+      if (!Number.isFinite(value)) continue;
+      quantityMap.set(key, Math.max(0, Math.floor(value)));
+    }
+    base.quantities = quantityMap;
+
     const normalizeSku = (value: string) =>
       String(value)
         .replace(/[\s\u00A0]/g, "")

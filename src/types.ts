@@ -62,6 +62,7 @@ export interface ConfigState {
   catalog: Catalog;
   automation: boolean; // automation ON/OFF (your override toggle);
   selectedBom: Map<string, Set<string>>;
+  quantities: Map<string, number>;
 }
 
 // ---------- (Optional) UI helpers ----------

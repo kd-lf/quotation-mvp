@@ -11,6 +11,7 @@ import {
   ListItemText,
   Collapse,
   Button,
+  TextField,
 } from "@mui/material";
 
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -24,7 +25,8 @@ import { generateQuotePdf } from "../logic/generateQuotePdf";
 import type { ConfigState, Product, SelectionValue } from "../types";
 import { applyRules, selectSystem, selectItem } from "../logic/ruleEngine.ts";
 
-const SOFTWARE_GROUP = "Software Options"; // Must match PRODUCTS sheet
+const SOFTWARE_GROUP = "Software Options";
+const qtyKey = (parentSku: string, sku: string) => `${parentSku}::${sku}`;
 
 interface Props {
   state: ConfigState;
@@ -40,13 +42,6 @@ interface Props {
 
 const asArray = (v: SelectionValue | undefined): string[] => (!v ? [] : Array.isArray(v) ? v : [v]);
 
-/**
- * ItemSelector v3
- * - Adds checkboxes for BOM children (optional accessories)
- * - Persists BOM selections inside state.selectedBom
- * - Works for system BOM and group-level BOMs
- */
-
 export default function ItemSelector({
   state,
   setState,
@@ -54,36 +49,53 @@ export default function ItemSelector({
   priceBookName,
   priceBookEntries,
   priceBookUploadedAt,
-   negotiatedPriceMap,
+  negotiatedPriceMap,
   clearNegotiatedPrices,
   onNegotiatedPrices,
 }: Props) {
-  const { catalog, selections, system, selectedBom } = state;
+  const { catalog, selections, system, selectedBom, quantities } = state;
 
   const getOptionsForGroup = (group: string): Product[] =>
     catalog.items.filter((i) => i.group === group);
 
   const bomForSku = (sku?: string) => (sku ? catalog.bomByParentSku?.get(sku) : undefined);
 
+  const getUnitPrice = (sku: string, fallback?: number) => {
+    const normSku = String(sku).replace(/[\s\u00A0]/g, "").trim().toUpperCase();
+
+    if (negotiatedPriceMap?.has(normSku)) return negotiatedPriceMap.get(normSku)!;
+    if (priceMap?.has(normSku)) return priceMap.get(normSku)!;
+    if (typeof fallback === "number") return fallback;
+    const p = catalog.bySKU.get(sku)?.price;
+    return typeof p === "number" ? p : 0;
+  };
+
   const ensureBomPreselected = (parentSku: string, bomLines: any[]) => {
     setState((prev) => {
       if (!prev) return prev;
 
       const map = new Map(prev.selectedBom);
+      const qtyMap = new Map(prev.quantities);
+      let changed = false;
 
-      // If already populated, do nothing (user may have edited it)
-      if (map.has(parentSku)) return prev;
+      if (!map.has(parentSku)) {
+        map.set(parentSku, new Set(bomLines.map((line) => line.sku)));
+        changed = true;
+      }
 
-      const set = new Set(bomLines.map((line) => line.sku));
-      map.set(parentSku, set);
+      for (const line of bomLines) {
+        const key = qtyKey(parentSku, line.sku);
+        if (!qtyMap.has(key)) {
+          qtyMap.set(key, Math.max(0, Number(line.qty ?? 1) || 1));
+          changed = true;
+        }
+      }
 
-      return { ...prev, selectedBom: map };
+      if (!changed) return prev;
+      return { ...prev, selectedBom: map, quantities: qtyMap };
     });
   };
 
-  // --------------------------
-  // System selection handler
-  // --------------------------
   const handleSystemSelect = (sku: string) => {
     const sys = catalog.systems.find((s) => s.sku === sku);
     if (!sys) return;
@@ -92,17 +104,13 @@ export default function ItemSelector({
       if (!prev) return prev;
       let next = selectSystem(sys, prev);
 
-      // Reset BOM selection for new system
-      next = { ...next, selectedBom: new Map() };
+      next = { ...next, selectedBom: new Map(), quantities: new Map() };
 
       if (next.automation) next = applyRules(next);
       return next;
     });
   };
 
-  // --------------------------
-  // Option selection handler
-  // --------------------------
   const handleOptionSelect = (group: string, sku: string) => {
     setState((prev) => {
       if (!prev) return prev;
@@ -113,27 +121,28 @@ export default function ItemSelector({
     });
   };
 
-  // --------------------------
-  // Render BOM (with checkboxes)
-  // --------------------------
+  const updateQty = (parentSku: string, sku: string, value: string) => {
+    const parsed = Number(value);
+    const safeQty = Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : 0;
+
+    setState((prev) => {
+      if (!prev) return prev;
+      const nextQty = new Map(prev.quantities);
+      nextQty.set(qtyKey(parentSku, sku), safeQty);
+      return { ...prev, quantities: nextQty };
+    });
+  };
 
   const renderBom = (parentSku?: string) => {
     const bomLines = bomForSku(parentSku);
-    if (!bomLines?.length) return null;
+    if (!parentSku || !bomLines?.length) return null;
 
     const [expanded, setExpanded] = React.useState(false);
 
-    // Preselect BOM children first time
-    if (parentSku && bomLines.length) {
-      ensureBomPreselected(parentSku, bomLines);
-    }
+    ensureBomPreselected(parentSku, bomLines);
 
-    const selectedSet = selectedBom.get(parentSku!) ?? new Set();
-
-    // ✔ Count only checked
+    const selectedSet = selectedBom.get(parentSku) ?? new Set();
     const checkedCount = Array.from(selectedSet).length;
-
-    // ✔ Total count
     const totalCount = bomLines.length;
 
     const toggleBom = (childSku: string) => {
@@ -141,50 +150,64 @@ export default function ItemSelector({
         if (!prev) return prev;
 
         const map = new Map(prev.selectedBom);
-        const set = new Set(map.get(parentSku!) ?? []);
+        const set = new Set(map.get(parentSku) ?? []);
 
         if (set.has(childSku)) set.delete(childSku);
         else set.add(childSku);
 
-        map.set(parentSku!, set);
+        map.set(parentSku, set);
         return { ...prev, selectedBom: map };
       });
     };
 
+    const parentTotal = bomLines.reduce((sum, line) => {
+      const qty = quantities.get(qtyKey(parentSku, line.sku)) ?? line.qty ?? 1;
+      if (!selectedSet.has(line.sku) || qty <= 0) return sum;
+      return sum + getUnitPrice(line.sku, line.price) * qty;
+    }, 0);
+
     return (
       <Box sx={{ mt: 1, ml: 1 }}>
-        {/* Collapsible header */}
         <Box
           sx={{
             display: "flex",
             alignItems: "center",
             cursor: "pointer",
             userSelect: "none",
+            justifyContent: "space-between",
+            pr: 1,
           }}
           onClick={() => setExpanded((e) => !e)}
         >
-          {expanded ? (
-            <ExpandLessIcon fontSize="small" sx={{ mr: 0.5 }} />
-          ) : (
-            <ExpandMoreIcon fontSize="small" sx={{ mr: 0.5 }} />
-          )}
+          <Box sx={{ display: "flex", alignItems: "center" }}>
+            {expanded ? (
+              <ExpandLessIcon fontSize="small" sx={{ mr: 0.5 }} />
+            ) : (
+              <ExpandMoreIcon fontSize="small" sx={{ mr: 0.5 }} />
+            )}
+
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              Includes {checkedCount} / {totalCount}
+            </Typography>
+          </Box>
 
           <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            Includes {checkedCount} / {totalCount}
+            {parentTotal.toFixed(2)} NOK
           </Typography>
         </Box>
 
-        {/* Collapsing content */}
         <Collapse in={expanded} timeout="auto" unmountOnExit>
-          <Stack spacing={0.2} sx={{ mt: 1 }}>
+          <Stack spacing={0.5} sx={{ mt: 1 }}>
             {bomLines.map((line, idx) => {
               const p = catalog.bySKU.get(line.sku);
               const label = p?.name ?? line.name ?? line.sku;
+              const qty = quantities.get(qtyKey(parentSku, line.sku)) ?? line.qty ?? 1;
+              const unitPrice = getUnitPrice(line.sku, line.price);
 
               return (
                 <Box
                   key={`${parentSku}-${line.sku}-${idx}`}
-                  sx={{ display: "flex", alignItems: "center" }}
+                  sx={{ display: "flex", alignItems: "center", gap: 1 }}
                 >
                   <Checkbox
                     size="small"
@@ -192,9 +215,24 @@ export default function ItemSelector({
                     onChange={() => toggleBom(line.sku)}
                   />
 
-                  
-                  <Typography variant="body2" color="text.secondary">
-                    {line.qty} × {line.sku} — {label}
+                  <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
+                    {line.sku} — {label}
+                  </Typography>
+
+                  <TextField
+                    size="small"
+                    type="number"
+                    label="Qty"
+                    value={qty}
+                    onChange={(e) => updateQty(parentSku, line.sku, e.target.value)}
+                    inputProps={{ min: 0, step: 1, style: { width: 64 } }}
+                  />
+
+                  <Typography
+                    variant="body2"
+                    sx={{ width: 120, textAlign: "right", fontVariantNumeric: "tabular-nums" }}
+                  >
+                    {(unitPrice * qty).toFixed(2)} NOK
                   </Typography>
                 </Box>
               );
@@ -202,71 +240,55 @@ export default function ItemSelector({
           </Stack>
         </Collapse>
       </Box>
-
-
-
     );
   };
 
-  // -------------------------------------------------------------
-  // UI (system selector, automation toggle, group selectors, BOM)
-  // -------------------------------------------------------------
   return (
-    
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-{/* QUOTE ACTIONS */}
-<Box sx={{ display: "flex", gap: 2, justifyContent: "flex-end", mt: 2 }}>
-  <Button
-    variant="contained"
-    onClick={() =>
-      exportQuoteToExcel(
-        state,
-        priceMap,                  // <-- Comes from App.tsx
-        priceBookName,
-        priceBookEntries,
-        priceBookUploadedAt
-      )
-    }
-  >
-    Export Quote
-  </Button>
+      <Box sx={{ display: "flex", gap: 2, justifyContent: "flex-end", mt: 2 }}>
+        <Button
+          variant="contained"
+          onClick={() =>
+            exportQuoteToExcel(state, priceMap, priceBookName, priceBookEntries, priceBookUploadedAt)
+          }
+        >
+          Export Quote
+        </Button>
 
-  <Button
-    variant="outlined"
-    onClick={() => exportCrmReportToExcel(state, priceMap, negotiatedPriceMap)}
-  >
-    Export CRM Report
-  </Button>
+        <Button
+          variant="outlined"
+          onClick={() => exportCrmReportToExcel(state, priceMap, negotiatedPriceMap)}
+        >
+          Export CRM Report
+        </Button>
 
-  <Button
-    variant="contained"
-    color="secondary"
-    onClick={() =>
-      generateQuotePdf(
-        expandConfigToQuoteItems({ ...state, priceMap, negotiatedPriceMap }),
-        state.automation,
-        30
-      )
-    }
-  >
-    Generate PDF
-  </Button>
+        <Button
+          variant="contained"
+          color="secondary"
+          onClick={() =>
+            generateQuotePdf(
+              expandConfigToQuoteItems({ ...state, priceMap, negotiatedPriceMap }),
+              state.automation,
+              30,
+            )
+          }
+        >
+          Generate PDF
+        </Button>
 
-  <UploadQuote
-    catalog={state.catalog}
-    setState={setState}
-    onNegotiatedPrices={onNegotiatedPrices}
-  />
+        <UploadQuote
+          catalog={state.catalog}
+          setState={setState}
+          onNegotiatedPrices={onNegotiatedPrices}
+        />
 
-  {negotiatedPriceMap && (
-    <Button variant="text" color="secondary" onClick={clearNegotiatedPrices}>
-      Clear Negotiated Prices
-    </Button>
-  )}
-</Box>
+        {negotiatedPriceMap && (
+          <Button variant="text" color="secondary" onClick={clearNegotiatedPrices}>
+            Clear Negotiated Prices
+          </Button>
+        )}
+      </Box>
 
-
-      {/* SYSTEM SELECTION */}
       <Box>
         <FormControl fullWidth sx={{ mt: 1 }}>
           <InputLabel>System</InputLabel>
@@ -283,19 +305,14 @@ export default function ItemSelector({
           </Select>
         </FormControl>
 
-        {/* BOM under selected system */}
         {renderBom(system?.sku)}
       </Box>
 
-      {/* AUTOMATION TOGGLE */}
-
-      {/* GROUP SELECTIONS */}
       {catalog.groups.map((group) => {
         const isSoftware = group === SOFTWARE_GROUP;
         const selectedSkus = asArray(selections.get(group));
         const selectedForControl = isSoftware ? selectedSkus : (selectedSkus[0] ?? "");
 
-        // Single-choice groups show their BOM
         const parentSkuForBom = !isSoftware ? selectedSkus[0] : undefined;
 
         return (
@@ -311,7 +328,6 @@ export default function ItemSelector({
                   const v = e.target.value;
 
                   if (isSoftware) {
-                    // Multi-choice
                     const nextSkus = typeof v === "string" ? [v] : (v as string[]);
                     setState((prev) => {
                       if (!prev) return prev;
@@ -323,7 +339,6 @@ export default function ItemSelector({
                       return next.automation ? applyRules(next) : next;
                     });
                   } else {
-                    // Single choice
                     handleOptionSelect(group, v as string);
                   }
                 }}
@@ -348,7 +363,6 @@ export default function ItemSelector({
               </Select>
             </FormControl>
 
-            {/* BOM under selected group option */}
             {renderBom(parentSkuForBom)}
           </Box>
         );

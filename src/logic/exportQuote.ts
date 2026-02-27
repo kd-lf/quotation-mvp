@@ -7,6 +7,7 @@ export interface QuoteMetadata {
   systemSku: string;
   selections: Record<string, string | string[]>;
   bomSelections: Record<string, string[]>;
+  quantities: Record<string, number>;
   priceBookName: string | null;
   priceBookEntries: number | null;
   priceBookUploadedAt: string | null;
@@ -33,13 +34,15 @@ export function exportQuoteToExcel(
     priceMap, // <-- use priceMap passed into function
   });
 
-  const customerRows = items.map((it) => ({
+  const customerRows = items
+    .filter((it) => it.checked && !it.isHeader)
+    .map((it) => ({
     Description: it.item,
     SKU: it.sku,
     Qty: it.qty ?? 1,
     "Unit Price": it.price,
-    Total: (it.qty ?? 1) * it.price,
-  }));
+    Total: (it.qty ?? 1) * (it.price ?? 0),
+    }));
 
   const wsQuote = XLSX.utils.json_to_sheet(customerRows);
 
@@ -56,10 +59,16 @@ export function exportQuoteToExcel(
     bomSelections[parent] = Array.from(set);
   });
 
+  const quantities: Record<string, number> = {};
+  state.quantities.forEach((qty, key) => {
+    quantities[key] = qty;
+  });
+
   const metadata: QuoteMetadata = {
     systemSku: state.system.sku,
     selections,
     bomSelections,
+    quantities,
     priceBookName,
     priceBookEntries,
     priceBookUploadedAt: priceBookUploadedAt?.toISOString() ?? null,
