@@ -52,11 +52,8 @@ function setDefaultInGroup(state: ConfigState, group: string, sku?: string): Con
   const currentSelection = next.selections.get(group);
 
   if (currentSelection) {
-    const currentSkus = asArray(currentSelection);
-    const hasValidSelection = currentSkus.some((selectedSku) => {
-      const selectedProduct = next.catalog.bySKU.get(selectedSku);
-      return selectedProduct?.group === group;
-    });
+    const selectedProduct = next.catalog.bySKU.get(currentSelection);
+    const hasValidSelection = selectedProduct?.group === group;
 
     if (hasValidSelection) return next;
   }
