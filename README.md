@@ -179,7 +179,3 @@ src/
 - If no system is selected, exports are intentionally blocked.
 - Negotiated prices override price book prices for matching SKUs.
 - BOM totals only include child lines that are checked and have quantity > 0.
-
----
-
-If you plan to onboard more users, consider adding sample Excel templates under a `templates/` folder and linking them from this README.
