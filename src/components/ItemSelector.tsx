@@ -11,11 +11,15 @@ import {
   ListItemText,
   Collapse,
   Chip,
+  Button,
 } from "@mui/material";
 
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
+
+import { exportQuoteToExcel } from "../logic/exportQuote";
+import UploadQuote from "./UploadQuote";
 
 import type { ConfigState, Product, SelectionValue } from "../types";
 import { applyRules, selectSystem, selectItem } from "../logic/ruleEngine.ts";
@@ -25,6 +29,7 @@ const SOFTWARE_GROUP = "Software Options"; // Must match PRODUCTS sheet
 interface Props {
   state: ConfigState;
   setState: React.Dispatch<React.SetStateAction<ConfigState | null>>;
+  priceMap: Map<string, number> | null;
   priceBookName: string | null;
   priceBookEntries: number | null;
   priceBookUploadedAt: Date | null;
@@ -42,6 +47,7 @@ const asArray = (v: SelectionValue | undefined): string[] => (!v ? [] : Array.is
 export default function ItemSelector({
   state,
   setState,
+  priceMap,
   priceBookName,
   priceBookEntries,
   priceBookUploadedAt,
@@ -179,6 +185,8 @@ export default function ItemSelector({
                     checked={selectedSet.has(line.sku)}
                     onChange={() => toggleBom(line.sku)}
                   />
+
+                  
                   <Typography variant="body2" color="text.secondary">
                     {line.qty} × {line.sku} — {label}
                   </Typography>
@@ -188,6 +196,9 @@ export default function ItemSelector({
           </Stack>
         </Collapse>
       </Box>
+
+
+
     );
   };
 
@@ -195,6 +206,7 @@ export default function ItemSelector({
   // UI (system selector, automation toggle, group selectors, BOM)
   // -------------------------------------------------------------
   return (
+    
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
       {priceBookName && (
         <Chip
@@ -207,6 +219,28 @@ export default function ItemSelector({
           sx={{ mt: 2, fontSize: "0.8rem" }}
         />
       )}
+
+{/* QUOTE ACTIONS */}
+<Box sx={{ display: "flex", gap: 2, justifyContent: "flex-end", mt: 2 }}>
+  <Button
+    variant="contained"
+    onClick={() =>
+      exportQuoteToExcel(
+        state,
+        priceMap,                  // <-- Comes from App.tsx
+        priceBookName,
+        priceBookEntries,
+        priceBookUploadedAt
+      )
+    }
+  >
+    Export Quote
+  </Button>
+
+  <UploadQuote catalog={state.catalog} setState={setState} />
+</Box>
+
+
       {/* SYSTEM SELECTION */}
       <Box>
         <FormControl fullWidth sx={{ mt: 1 }}>

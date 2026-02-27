@@ -87,6 +87,7 @@ export default function App() {
           <ItemSelector
             state={state}
             setState={setState}
+            priceMap={priceMap}
             priceBookName={priceBookName}
             priceBookEntries={priceBookEntries}
             priceBookUploadedAt={priceBookUploadedAt}
