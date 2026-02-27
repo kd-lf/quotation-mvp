@@ -10,17 +10,16 @@ import {
   Checkbox,
   ListItemText,
   Collapse,
-  Chip,
   Button,
 } from "@mui/material";
 
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
-
 import { exportQuoteToExcel } from "../logic/exportQuote";
 import { exportCrmReportToExcel } from "../logic/exportCrmReport";
 import UploadQuote from "./UploadQuote";
+import expandConfigToQuoteItems from "../logic/expandConfigToQuoteItems";
+import { generateQuotePdf } from "../logic/generateQuotePdf";
 
 import type { ConfigState, Product, SelectionValue } from "../types";
 import { applyRules, selectSystem, selectItem } from "../logic/ruleEngine.ts";
@@ -215,28 +214,6 @@ export default function ItemSelector({
   return (
     
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      {priceBookName && (
-        <Chip
-          icon={<AccessTimeIcon />}
-          label={`Price Book: ${priceBookName} • ${
-            priceBookEntries ?? 0
-          } entries • Uploaded ${priceBookUploadedAt?.toLocaleString()}`}
-          color="primary"
-          variant="outlined"
-          sx={{ mt: 2, fontSize: "0.8rem" }}
-        />
-      )}
-
- {negotiatedPriceMap && (
-        <Chip
-          label={`Negotiated quote loaded • ${negotiatedPriceMap.size} overridden prices`}
-          color="secondary"
-          variant="outlined"
-          sx={{ mt: 1, fontSize: "0.8rem" }}
-        />
-      )}
-
-
 {/* QUOTE ACTIONS */}
 <Box sx={{ display: "flex", gap: 2, justifyContent: "flex-end", mt: 2 }}>
   <Button
@@ -259,6 +236,20 @@ export default function ItemSelector({
     onClick={() => exportCrmReportToExcel(state, priceMap, negotiatedPriceMap)}
   >
     Export CRM Report
+  </Button>
+
+  <Button
+    variant="contained"
+    color="secondary"
+    onClick={() =>
+      generateQuotePdf(
+        expandConfigToQuoteItems({ ...state, priceMap, negotiatedPriceMap }),
+        state.automation,
+        30
+      )
+    }
+  >
+    Generate PDF
   </Button>
 
   <UploadQuote
