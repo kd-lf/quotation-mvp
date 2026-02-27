@@ -51,6 +51,17 @@ function applyGroupDefaults(state: ConfigState): ConfigState {
 
 function setDefaultInGroup(state: ConfigState, group: string, sku?: string): ConfigState {
   const next = cloneState(state);
+  const currentSelection = next.selections.get(group);
+
+  if (currentSelection) {
+    const currentSkus = asArray(currentSelection);
+    const hasValidSelection = currentSkus.some((selectedSku) => {
+      const selectedProduct = next.catalog.bySKU.get(selectedSku);
+      return selectedProduct?.group === group;
+    });
+
+    if (hasValidSelection) return next;
+  }
 
   if (group && sku) {
     const product = next.catalog.bySKU.get(sku);
