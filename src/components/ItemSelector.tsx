@@ -8,7 +8,6 @@ import {
   Box,
   Stack,
   Checkbox,
-  ListItemText,
   Collapse,
   Button,
   TextField,
@@ -22,10 +21,9 @@ import UploadQuote from "./UploadQuote";
 import expandConfigToQuoteItems from "../logic/expandConfigToQuoteItems";
 import { generateQuotePdf } from "../logic/generateQuotePdf";
 
-import type { BomLine, ConfigState, Product, SelectionValue } from "../types";
+import type { BomLine, ConfigState, Product } from "../types";
 import { applyRules, selectSystem, selectItem } from "../logic/ruleEngine.ts";
 
-const SOFTWARE_GROUP = "Software Options";
 const qtyKey = (parentSku: string, sku: string) => `${parentSku}::${sku}`;
 
 interface Props {
@@ -40,7 +38,6 @@ interface Props {
   onNegotiatedPrices: (prices: Map<string, number>) => void;
 }
 
-const asArray = (v: SelectionValue | undefined): string[] => (!v ? [] : Array.isArray(v) ? v : [v]);
 
 interface BomSectionProps {
   parentSku: string;
@@ -405,10 +402,8 @@ export default function ItemSelector({
       </Box>
 
       {catalog.groups.map((group) => {
-        const isSoftware = group === SOFTWARE_GROUP;
-        const selectedSkus = asArray(selections.get(group));
-        const selectedForControl = isSoftware ? selectedSkus : (selectedSkus[0] ?? "");
-        const parentSkuForBom = !isSoftware ? selectedSkus[0] : undefined;
+        const selectedForControl = selections.get(group) ?? "";
+        const parentSkuForBom = selectedForControl || undefined;
 
         return (
           <Box key={group} sx={{ my: 2 }}>
@@ -416,50 +411,20 @@ export default function ItemSelector({
               <InputLabel>{group}</InputLabel>
 
               <Select
-                multiple={isSoftware}
                 value={selectedForControl}
                 label={group}
-                onChange={(e) => {
-                  const v = e.target.value;
-
-                  if (isSoftware) {
-                    const nextSkus = typeof v === "string" ? [v] : (v as string[]);
-                    setState((prev) => {
-                      if (!prev) return prev;
-                      const next = {
-                        ...prev,
-                        selections: new Map(prev.selections),
-                      };
-                      next.selections.set(group, nextSkus);
-                      return next.automation ? applyRules(next) : next;
-                    });
-                  } else {
-                    handleOptionSelect(group, v as string);
-                  }
-                }}
-                renderValue={(val) =>
-                  Array.isArray(val)
-                    ? val.map((sku) => catalog.bySKU.get(sku)?.name ?? sku).join(", ")
-                    : (catalog.bySKU.get(val as string)?.name ?? (val as string))
-                }
+                onChange={(e) => handleOptionSelect(group, e.target.value as string)}
+                renderValue={(val) => catalog.bySKU.get(val as string)?.name ?? (val as string)}
               >
                 {getOptionsForGroup(group).map((item) => (
                   <MenuItem key={item.sku} value={item.sku}>
-                    {isSoftware ? (
-                      <>
-                        <Checkbox checked={selectedSkus.includes(item.sku)} />
-                        <ListItemText primary={item.name} />
-                      </>
-                    ) : (
-                      item.name
-                    )}
+                    {item.name}
                   </MenuItem>
                 ))}
               </Select>
             </FormControl>
 
-            {isSoftware && selectedSkus.map((sku) => renderStandaloneRow(sku))}
-            {!isSoftware && parentSkuForBom && !(bomForSku(parentSkuForBom)?.length) &&
+            {parentSkuForBom && !(bomForSku(parentSkuForBom)?.length) &&
               renderStandaloneRow(parentSkuForBom)}
 
             {renderBom(parentSkuForBom)}

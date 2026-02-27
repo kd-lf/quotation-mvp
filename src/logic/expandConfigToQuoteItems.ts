@@ -94,32 +94,28 @@ export default function expandConfigToQuoteItems(state: ConfigState & {
   }
 
   for (const group of catalog.groups) {
-    const selectedValues = selections.get(group);
-    if (!selectedValues) continue;
+    const sku = selections.get(group);
+    if (!sku) continue;
 
-    const skus = Array.isArray(selectedValues) ? selectedValues : [selectedValues];
+    const p: Product | undefined = catalog.bySKU.get(sku);
+    if (!p) continue;
 
-    for (const sku of skus) {
-      const p: Product | undefined = catalog.bySKU.get(sku);
-      if (!p) continue;
+    const bom = catalog.bomByParentSku.get(p.sku) ?? [];
+    const selectedChildren = selectedBom.get(p.sku) ?? new Set<string>();
 
-      const bom = catalog.bomByParentSku.get(p.sku) ?? [];
-      const selectedChildren = selectedBom.get(p.sku) ?? new Set<string>();
-
-      if (bom.length > 0) {
-        addParentWithBom(p, bom, selectedChildren);
-      } else {
-        const qty = getQty(p.sku, p.sku, 1);
-        result.push({
-          item: p.name,
-          sku: p.sku,
-          qty,
-          price: getPrice(p.sku),
-          isHeader: false,
-          isBoldParent: true,
-          checked: qty > 0,
-        });
-      }
+    if (bom.length > 0) {
+      addParentWithBom(p, bom, selectedChildren);
+    } else {
+      const qty = getQty(p.sku, p.sku, 1);
+      result.push({
+        item: p.name,
+        sku: p.sku,
+        qty,
+        price: getPrice(p.sku),
+        isHeader: false,
+        isBoldParent: true,
+        checked: qty > 0,
+      });
     }
   }
 

@@ -7,13 +7,6 @@ import type { Catalog, ConfigState, Product, RuleAction, RuleCondition } from ".
  * Small utilities
  * ================================================================================= */
 
-type SelectionValue = string | string[];
-
-function asArray(v: SelectionValue | undefined): string[] {
-  if (!v) return [];
-  return Array.isArray(v) ? v : [v];
-}
-
 function cloneState(state: ConfigState): ConfigState {
   return {
     ...state,
@@ -28,9 +21,11 @@ function getOptionsForGroup(catalog: Catalog, group: string): Product[] {
 }
 
 function getSelectedProductsForGroup(state: ConfigState, group: string): Product[] {
-  const v = state.selections.get(group);
-  const skus = asArray(v);
-  return skus.map((sku) => state.catalog.bySKU.get(sku)).filter((p): p is Product => !!p);
+  const sku = state.selections.get(group);
+  if (!sku) return [];
+
+  const product = state.catalog.bySKU.get(sku);
+  return product ? [product] : [];
 }
 
 /* =================================================================================
@@ -42,7 +37,10 @@ function applyGroupDefaults(state: ConfigState): ConfigState {
 
   for (const group of next.catalog.groups) {
     if (next.selections.has(group)) continue;
-    const def = getOptionsForGroup(next.catalog, group).find((o) => o.default);
+
+    const options = getOptionsForGroup(next.catalog, group);
+    const def = options.find((o) => o.default) ?? options[0];
+
     if (def) next.selections.set(group, def.sku);
   }
 
@@ -80,12 +78,10 @@ function requireSelection(state: ConfigState, group: string): ConfigState {
   const next = cloneState(state);
 
   const options = getOptionsForGroup(next.catalog, group);
-  const current = asArray(next.selections.get(group));
+  const current = next.selections.get(group);
 
-  const valid = current.filter((sku) => options.some((o) => o.sku === sku));
-
-  if (valid.length > 0) {
-    next.selections.set(group, valid.length === 1 ? valid[0] : valid);
+  if (current && options.some((o) => o.sku === current)) {
+    next.selections.set(group, current);
     return next;
   }
 
@@ -194,23 +190,13 @@ export function selectSystem(system: Product, state: ConfigState): ConfigState {
   return next;
 }
 
-const MULTI_GROUPS = new Set<string>(["Software Options"]);
-
 export function selectItem(group: string, sku: string, state: ConfigState): ConfigState {
   const next = cloneState(state);
 
   const product = next.catalog.bySKU.get(sku);
   if (!product || product.group !== group) return next;
 
-  if (MULTI_GROUPS.has(group)) {
-    const current = asArray(next.selections.get(group));
-    const updated = current.includes(sku) ? current.filter((s) => s !== sku) : [...current, sku];
-
-    if (updated.length === 0) next.selections.delete(group);
-    else next.selections.set(group, updated);
-  } else {
-    next.selections.set(group, sku);
-  }
+  next.selections.set(group, sku);
 
   return state.automation ? applyRules(next) : next;
 }

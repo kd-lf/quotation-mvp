@@ -50,9 +50,11 @@ export default function UploadQuote({
     base.system = system;
 
     // Restore selections
-    const map = new Map<string, any>();
+    const map = new Map<string, string>();
     for (const [group, val] of Object.entries(metadata.selections)) {
-      map.set(group, val);
+      const normalized = Array.isArray(val) ? val[0] : val;
+      if (typeof normalized !== "string" || !normalized) continue;
+      map.set(group, normalized);
     }
     base.selections = map;
 

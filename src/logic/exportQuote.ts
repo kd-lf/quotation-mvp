@@ -5,7 +5,7 @@ import expandConfigToQuoteItems from "./expandConfigToQuoteItems";
 
 export interface QuoteMetadata {
   systemSku: string;
-  selections: Record<string, string | string[]>;
+  selections: Record<string, string>;
   bomSelections: Record<string, string[]>;
   quantities: Record<string, number>;
   priceBookName: string | null;
@@ -49,9 +49,9 @@ export function exportQuoteToExcel(
   // -----------------------------
   // 2. METADATA
   // -----------------------------
-  const selections: Record<string, string | string[]> = {};
+  const selections: Record<string, string> = {};
   state.selections.forEach((v, group) => {
-    selections[group] = Array.isArray(v) ? v : v;
+    selections[group] = v;
   });
 
   const bomSelections: Record<string, string[]> = {};
