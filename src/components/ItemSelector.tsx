@@ -335,7 +335,7 @@ export default function ItemSelector({
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
       <Box sx={{ display: "flex", gap: 2, justifyContent: "flex-end", mt: 2, flexWrap: "wrap" }}>
         <Button
-          variant="contained"
+          variant="outlined"
           onClick={() =>
             exportQuoteToExcel(state, priceMap, priceBookName, priceBookEntries, priceBookUploadedAt)
           }
@@ -343,12 +343,7 @@ export default function ItemSelector({
           Export Quote
         </Button>
 
-        <Button
-          variant="outlined"
-          onClick={() => exportCrmReportToExcel(state, priceMap, negotiatedPriceMap)}
-        >
-          Export CRM Report
-        </Button>
+        
 
         <UploadQuote
           catalog={state.catalog}
@@ -375,11 +370,18 @@ export default function ItemSelector({
 
         <Button
           variant="contained"
-          color="secondary"
           onClick={() => generateQuotePdf(getPdfItems(), state.automation, 30)}
         >
           Generate PDF
         </Button>
+
+<Button
+          variant="contained"
+          onClick={() => exportCrmReportToExcel(state, priceMap, negotiatedPriceMap)}
+        >
+          Export CRM Report
+        </Button>
+
       </Box>
 
       <Box>
