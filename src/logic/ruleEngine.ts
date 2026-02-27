@@ -42,7 +42,10 @@ function applyGroupDefaults(state: ConfigState): ConfigState {
 
   for (const group of next.catalog.groups) {
     if (next.selections.has(group)) continue;
-    const def = getOptionsForGroup(next.catalog, group).find((o) => o.default);
+
+    const options = getOptionsForGroup(next.catalog, group);
+    const def = options.find((o) => o.default) ?? options[0];
+
     if (def) next.selections.set(group, def.sku);
   }
 
