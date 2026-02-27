@@ -458,7 +458,15 @@ export default function ItemSelector({
               </Select>
             </FormControl>
 
-            {isSoftware && selectedSkus.map((sku) => renderStandaloneRow(sku))}
+            {isSoftware && selectedSkus.map((sku) => {
+              const hasBom = !!bomForSku(sku)?.length;
+              return (
+                <React.Fragment key={`${group}-${sku}`}>
+                  {!hasBom && renderStandaloneRow(sku)}
+                  {hasBom && renderBom(sku)}
+                </React.Fragment>
+              );
+            })}
             {!isSoftware && parentSkuForBom && !(bomForSku(parentSkuForBom)?.length) &&
               renderStandaloneRow(parentSkuForBom)}
 
