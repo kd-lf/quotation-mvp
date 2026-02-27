@@ -183,23 +183,13 @@ export function selectSystem(system: Product, state: ConfigState): ConfigState {
   return next;
 }
 
-const MULTI_GROUPS = new Set<string>(["Software Options"]);
-
 export function selectItem(group: string, sku: string, state: ConfigState): ConfigState {
   const next = cloneState(state);
 
   const product = next.catalog.bySKU.get(sku);
   if (!product || product.group !== group) return next;
 
-  if (MULTI_GROUPS.has(group)) {
-    const current = asArray(next.selections.get(group));
-    const updated = current.includes(sku) ? current.filter((s) => s !== sku) : [...current, sku];
-
-    if (updated.length === 0) next.selections.delete(group);
-    else next.selections.set(group, updated);
-  } else {
-    next.selections.set(group, sku);
-  }
+  next.selections.set(group, sku);
 
   return state.automation ? applyRules(next) : next;
 }
