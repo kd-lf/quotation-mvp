@@ -179,7 +179,7 @@ export default function ItemSelector({
     return typeof p === "number" ? p : 0;
   };
 
-  const ensureBomPreselected = (parentSku: string, bomLines: BomLine[]) => {
+  const ensureBomPreselected = React.useCallback((parentSku: string, bomLines: BomLine[]) => {
     setState((prev) => {
       if (!prev) return prev;
 
@@ -203,7 +203,7 @@ export default function ItemSelector({
       if (!changed) return prev;
       return { ...prev, selectedBom: map, quantities: qtyMap };
     });
-  };
+  }, [setState]);
 
   const handleSystemSelect = (sku: string) => {
     const sys = catalog.systems.find((s) => s.sku === sku);
