@@ -53,6 +53,7 @@ export default function ItemSelector({
   clearNegotiatedPrices,
   onNegotiatedPrices,
 }: Props) {
+  const [exportParentsOnly, setExportParentsOnly] = React.useState(false);
   const { catalog, selections, system, selectedBom, quantities } = state;
 
   const getOptionsForGroup = (group: string): Product[] =>
@@ -274,9 +275,24 @@ export default function ItemSelector({
     );
   };
 
+  const getPdfItems = () => {
+    const items = expandConfigToQuoteItems({ ...state, priceMap, negotiatedPriceMap });
+    if (!exportParentsOnly) return items;
+
+    return items
+      .filter((item) => item.checked && (item.isHeader || item.isBoldParent))
+      .map((item) => ({
+        ...item,
+        isHeader: false,
+        isBoldParent: true,
+        qty: item.qty ?? 1,
+        checked: true,
+      }));
+  };
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      <Box sx={{ display: "flex", gap: 2, justifyContent: "flex-end", mt: 2 }}>
+      <Box sx={{ display: "flex", gap: 2, justifyContent: "flex-end", mt: 2, flexWrap: "wrap" }}>
         <Button
           variant="contained"
           onClick={() =>
@@ -293,20 +309,6 @@ export default function ItemSelector({
           Export CRM Report
         </Button>
 
-        <Button
-          variant="contained"
-          color="secondary"
-          onClick={() =>
-            generateQuotePdf(
-              expandConfigToQuoteItems({ ...state, priceMap, negotiatedPriceMap }),
-              state.automation,
-              30,
-            )
-          }
-        >
-          Generate PDF
-        </Button>
-
         <UploadQuote
           catalog={state.catalog}
           setState={setState}
@@ -318,6 +320,25 @@ export default function ItemSelector({
             Clear Negotiated Prices
           </Button>
         )}
+      </Box>
+
+      <Box sx={{ display: "flex", gap: 2, justifyContent: "flex-end", alignItems: "center", mt: -1 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Checkbox
+            size="small"
+            checked={exportParentsOnly}
+            onChange={(e) => setExportParentsOnly(e.target.checked)}
+          />
+          <Typography variant="body2">Only export parents (no children)</Typography>
+        </Box>
+
+        <Button
+          variant="contained"
+          color="secondary"
+          onClick={() => generateQuotePdf(getPdfItems(), state.automation, 30)}
+        >
+          Generate PDF
+        </Button>
       </Box>
 
       <Box>
