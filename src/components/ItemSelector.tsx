@@ -22,7 +22,7 @@ import UploadQuote from "./UploadQuote";
 import expandConfigToQuoteItems from "../logic/expandConfigToQuoteItems";
 import { generateQuotePdf } from "../logic/generateQuotePdf";
 
-import type { ConfigState, Product, SelectionValue } from "../types";
+import type { BomLine, ConfigState, Product, SelectionValue } from "../types";
 import { applyRules, selectSystem, selectItem } from "../logic/ruleEngine.ts";
 
 const SOFTWARE_GROUP = "Software Options";
@@ -70,7 +70,7 @@ export default function ItemSelector({
     return typeof p === "number" ? p : 0;
   };
 
-  const ensureBomPreselected = (parentSku: string, bomLines: any[]) => {
+  const ensureBomPreselected = (parentSku: string, bomLines: BomLine[]) => {
     setState((prev) => {
       if (!prev) return prev;
 
@@ -133,6 +133,42 @@ export default function ItemSelector({
     });
   };
 
+  const getBomTotal = (parentSku: string, lines: BomLine[], selectedSet: Set<string>) =>
+    lines.reduce((sum, line) => {
+      const qty = quantities.get(qtyKey(parentSku, line.sku)) ?? line.qty ?? 1;
+      if (!selectedSet.has(line.sku) || qty <= 0) return sum;
+      return sum + getUnitPrice(line.sku, line.price) * qty;
+    }, 0);
+
+  const renderStandaloneRow = (sku: string) => {
+    const product = catalog.bySKU.get(sku);
+    if (!product) return null;
+
+    const qty = quantities.get(qtyKey(sku, sku)) ?? 1;
+    const unitPrice = getUnitPrice(sku, product.price);
+
+    return (
+      <Box key={sku} sx={{ display: "flex", justifyContent: "flex-end", mt: 1 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
+            {product.sku}
+          </Typography>
+          <TextField
+            size="small"
+            type="number"
+            label="Qty"
+            value={qty}
+            onChange={(e) => updateQty(sku, sku, e.target.value)}
+            inputProps={{ min: 0, step: 1, style: { width: 64 } }}
+          />
+          <Typography variant="body2" sx={{ width: 140, textAlign: "right", fontWeight: 600 }}>
+            {(unitPrice * qty).toFixed(2)} NOK
+          </Typography>
+        </Box>
+      </Box>
+    );
+  };
+
   const renderBom = (parentSku?: string) => {
     const bomLines = bomForSku(parentSku);
     if (!parentSku || !bomLines?.length) return null;
@@ -144,6 +180,7 @@ export default function ItemSelector({
     const selectedSet = selectedBom.get(parentSku) ?? new Set();
     const checkedCount = Array.from(selectedSet).length;
     const totalCount = bomLines.length;
+    const parentTotal = getBomTotal(parentSku, bomLines, selectedSet);
 
     const toggleBom = (childSku: string) => {
       setState((prev) => {
@@ -159,12 +196,6 @@ export default function ItemSelector({
         return { ...prev, selectedBom: map };
       });
     };
-
-    const parentTotal = bomLines.reduce((sum, line) => {
-      const qty = quantities.get(qtyKey(parentSku, line.sku)) ?? line.qty ?? 1;
-      if (!selectedSet.has(line.sku) || qty <= 0) return sum;
-      return sum + getUnitPrice(line.sku, line.price) * qty;
-    }, 0);
 
     return (
       <Box sx={{ mt: 1, ml: 1 }}>
@@ -305,6 +336,7 @@ export default function ItemSelector({
           </Select>
         </FormControl>
 
+        {system && !(bomForSku(system.sku)?.length) && renderStandaloneRow(system.sku)}
         {renderBom(system?.sku)}
       </Box>
 
@@ -312,7 +344,6 @@ export default function ItemSelector({
         const isSoftware = group === SOFTWARE_GROUP;
         const selectedSkus = asArray(selections.get(group));
         const selectedForControl = isSoftware ? selectedSkus : (selectedSkus[0] ?? "");
-
         const parentSkuForBom = !isSoftware ? selectedSkus[0] : undefined;
 
         return (
@@ -362,6 +393,10 @@ export default function ItemSelector({
                 ))}
               </Select>
             </FormControl>
+
+            {isSoftware && selectedSkus.map((sku) => renderStandaloneRow(sku))}
+            {!isSoftware && parentSkuForBom && !(bomForSku(parentSkuForBom)?.length) &&
+              renderStandaloneRow(parentSkuForBom)}
 
             {renderBom(parentSkuForBom)}
           </Box>
