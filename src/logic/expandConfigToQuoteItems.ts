@@ -1,10 +1,9 @@
-// FILE: src/logic/expandConfigToQuoteItems.ts
 import type { Product } from "../types";
 
 export default function expandConfigToQuoteItems(state: any) {
   const result: any[] = [];
 
-  const { system, catalog, selections, selectedBom, priceMap } = state;
+  const { system, catalog, selections, selectedBom, priceMap, negotiatedPriceMap } = state;
   if (!system) return result;
 
   // Normalize SKU for robust lookups
@@ -14,10 +13,11 @@ export default function expandConfigToQuoteItems(state: any) {
       .trim()
       .toUpperCase();
 
-  // Price priority: priceBook → BOM price → PRODUCTS price → 0
+  // Price priority: negotiated quote → priceBook → BOM price → PRODUCTS price → 0
   const getPrice = (sku: string, bomFallback?: number) => {
     const key = normSku(sku);
 
+    if (negotiatedPriceMap?.has(key)) return negotiatedPriceMap.get(key)!; // 0) negotiated quote
     if (priceMap?.has(key)) return priceMap.get(key)!; // 1) price book
     if (typeof bomFallback === "number") return bomFallback; // 2) BOM sheet price
     const p = catalog.bySKU.get(sku)?.price; // 3) product sheet price

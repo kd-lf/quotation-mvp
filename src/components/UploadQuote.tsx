@@ -1,7 +1,7 @@
 // FILE: src/components/UploadQuote.tsx
 import * as XLSX from "xlsx";
 import { Button } from "@mui/material";
-import { useRef } from "react";
+import { useRef, type ChangeEvent, type Dispatch, type SetStateAction } from "react";
 import type { QuoteMetadata } from "../logic/exportQuote";
 import { createInitialState } from "../logic/ruleEngine";
 import type { Catalog, ConfigState } from "../types";
@@ -9,13 +9,15 @@ import type { Catalog, ConfigState } from "../types";
 export default function UploadQuote({
   catalog,
   setState,
+  onNegotiatedPrices,
 }: {
   catalog: Catalog | null;
-  setState: (s: ConfigState) => void;
+  setState: Dispatch<SetStateAction<ConfigState | null>>;
+  onNegotiatedPrices: (prices: Map<string, number>) => void;
 }) {
   const ref = useRef<HTMLInputElement | null>(null);
 
-  const onUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !catalog) return;
 
@@ -30,6 +32,9 @@ export default function UploadQuote({
 
     const row = XLSX.utils.sheet_to_json<any>(sheet)[0];
     const metadata: QuoteMetadata = JSON.parse(row.json);
+
+    const quoteSheet = wb.Sheets["Quote"];
+    const quoteRows = quoteSheet ? XLSX.utils.sheet_to_json<any>(quoteSheet) : [];
 
     // -----------------------------
     // REBUILD STATE FROM METADATA
@@ -58,10 +63,30 @@ export default function UploadQuote({
     }
     base.selectedBom = bomMap;
 
+    const normalizeSku = (value: string) =>
+      String(value)
+        .replace(/[\s\u00A0]/g, "")
+        .trim()
+        .toUpperCase();
+
+    const negotiatedMap = new Map<string, number>();
+    for (const quoteRow of quoteRows) {
+      const rawSku = quoteRow["SKU"];
+      const rawUnitPrice = quoteRow["Unit Price"];
+
+      if (!rawSku || rawUnitPrice == null || rawUnitPrice === "") continue;
+
+      const numericPrice = Number(rawUnitPrice);
+      if (!Number.isFinite(numericPrice)) continue;
+
+      negotiatedMap.set(normalizeSku(rawSku), numericPrice);
+    }
+
     setState(base);
+    onNegotiatedPrices(negotiatedMap);
 
     if (ref.current) ref.current.value = "";
-    alert("Quote restored successfully!");
+    alert(`Quote restored successfully with ${negotiatedMap.size} negotiated prices.`);
   };
 
   return (

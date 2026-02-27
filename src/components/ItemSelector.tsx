@@ -19,6 +19,7 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 
 import { exportQuoteToExcel } from "../logic/exportQuote";
+import { exportCrmReportToExcel } from "../logic/exportCrmReport";
 import UploadQuote from "./UploadQuote";
 
 import type { ConfigState, Product, SelectionValue } from "../types";
@@ -33,6 +34,9 @@ interface Props {
   priceBookName: string | null;
   priceBookEntries: number | null;
   priceBookUploadedAt: Date | null;
+  negotiatedPriceMap: Map<string, number> | null;
+  clearNegotiatedPrices: () => void;
+  onNegotiatedPrices: (prices: Map<string, number>) => void;
 }
 
 const asArray = (v: SelectionValue | undefined): string[] => (!v ? [] : Array.isArray(v) ? v : [v]);
@@ -51,6 +55,9 @@ export default function ItemSelector({
   priceBookName,
   priceBookEntries,
   priceBookUploadedAt,
+   negotiatedPriceMap,
+  clearNegotiatedPrices,
+  onNegotiatedPrices,
 }: Props) {
   const { catalog, selections, system, selectedBom } = state;
 
@@ -220,6 +227,16 @@ export default function ItemSelector({
         />
       )}
 
+ {negotiatedPriceMap && (
+        <Chip
+          label={`Negotiated quote loaded • ${negotiatedPriceMap.size} overridden prices`}
+          color="secondary"
+          variant="outlined"
+          sx={{ mt: 1, fontSize: "0.8rem" }}
+        />
+      )}
+
+
 {/* QUOTE ACTIONS */}
 <Box sx={{ display: "flex", gap: 2, justifyContent: "flex-end", mt: 2 }}>
   <Button
@@ -237,7 +254,24 @@ export default function ItemSelector({
     Export Quote
   </Button>
 
-  <UploadQuote catalog={state.catalog} setState={setState} />
+  <Button
+    variant="outlined"
+    onClick={() => exportCrmReportToExcel(state, priceMap, negotiatedPriceMap)}
+  >
+    Export CRM Report
+  </Button>
+
+  <UploadQuote
+    catalog={state.catalog}
+    setState={setState}
+    onNegotiatedPrices={onNegotiatedPrices}
+  />
+
+  {negotiatedPriceMap && (
+    <Button variant="text" color="secondary" onClick={clearNegotiatedPrices}>
+      Clear Negotiated Prices
+    </Button>
+  )}
 </Box>
 
 

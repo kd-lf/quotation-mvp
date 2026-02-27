@@ -18,6 +18,7 @@ export default function App() {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [state, setState] = useState<ConfigState | null>(null);
   const [priceMap, setPriceMap] = useState<Map<string, number> | null>(null);
+  const [negotiatedPriceMap, setNegotiatedPriceMap] = useState<Map<string, number> | null>(null);
 
   // NEW metadata
   const [priceBookName, setPriceBookName] = useState<string | null>(null);
@@ -52,9 +53,12 @@ export default function App() {
     setState(null);
     setPriceMap(null);
     setPriceBookName(null);
+    setNegotiatedPriceMap(null);
     setPriceBookUploadedAt(null);
     setPriceBookEntries(null);
   };
+
+const effectivePriceMap = negotiatedPriceMap ?? priceMap;
 
   return (
     <Container maxWidth="lg" style={{ paddingTop: 24, paddingBottom: 24 }}>
@@ -87,14 +91,17 @@ export default function App() {
           <ItemSelector
             state={state}
             setState={setState}
-            priceMap={priceMap}
+            priceMap={effectivePriceMap}
             priceBookName={priceBookName}
             priceBookEntries={priceBookEntries}
             priceBookUploadedAt={priceBookUploadedAt}
+            negotiatedPriceMap={negotiatedPriceMap}
+            clearNegotiatedPrices={() => setNegotiatedPriceMap(null)}
+            onNegotiatedPrices={(prices) => setNegotiatedPriceMap(prices)}
           />
 
           <QuoteSummary
-            items={expandConfigToQuoteItems({ ...state, priceMap })}
+            items={expandConfigToQuoteItems({ ...state, priceMap, negotiatedPriceMap })}
             automationEnabled={state.automation}
             validDays={30}
           />
