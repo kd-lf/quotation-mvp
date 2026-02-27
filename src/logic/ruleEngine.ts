@@ -7,13 +7,6 @@ import type { Catalog, ConfigState, Product, RuleAction, RuleCondition } from ".
  * Small utilities
  * ================================================================================= */
 
-type SelectionValue = string | string[];
-
-function asArray(v: SelectionValue | undefined): string[] {
-  if (!v) return [];
-  return Array.isArray(v) ? v : [v];
-}
-
 function cloneState(state: ConfigState): ConfigState {
   return {
     ...state,
@@ -28,9 +21,11 @@ function getOptionsForGroup(catalog: Catalog, group: string): Product[] {
 }
 
 function getSelectedProductsForGroup(state: ConfigState, group: string): Product[] {
-  const v = state.selections.get(group);
-  const skus = asArray(v);
-  return skus.map((sku) => state.catalog.bySKU.get(sku)).filter((p): p is Product => !!p);
+  const sku = state.selections.get(group);
+  if (!sku) return [];
+
+  const product = state.catalog.bySKU.get(sku);
+  return product ? [product] : [];
 }
 
 /* =================================================================================
@@ -72,12 +67,10 @@ function requireSelection(state: ConfigState, group: string): ConfigState {
   const next = cloneState(state);
 
   const options = getOptionsForGroup(next.catalog, group);
-  const current = asArray(next.selections.get(group));
+  const current = next.selections.get(group);
 
-  const valid = current.filter((sku) => options.some((o) => o.sku === sku));
-
-  if (valid.length > 0) {
-    next.selections.set(group, valid.length === 1 ? valid[0] : valid);
+  if (current && options.some((o) => o.sku === current)) {
+    next.selections.set(group, current);
     return next;
   }
 

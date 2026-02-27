@@ -21,7 +21,7 @@ import UploadQuote from "./UploadQuote";
 import expandConfigToQuoteItems from "../logic/expandConfigToQuoteItems";
 import { generateQuotePdf } from "../logic/generateQuotePdf";
 
-import type { BomLine, ConfigState, Product, SelectionValue } from "../types";
+import type { BomLine, ConfigState, Product } from "../types";
 import { applyRules, selectSystem, selectItem } from "../logic/ruleEngine.ts";
 
 const qtyKey = (parentSku: string, sku: string) => `${parentSku}::${sku}`;
@@ -38,7 +38,6 @@ interface Props {
   onNegotiatedPrices: (prices: Map<string, number>) => void;
 }
 
-const asArray = (v: SelectionValue | undefined): string[] => (!v ? [] : Array.isArray(v) ? v : [v]);
 
 interface BomSectionProps {
   parentSku: string;
@@ -403,9 +402,8 @@ export default function ItemSelector({
       </Box>
 
       {catalog.groups.map((group) => {
-        const selectedSkus = asArray(selections.get(group));
-        const selectedForControl = selectedSkus[0] ?? "";
-        const parentSkuForBom = selectedSkus[0];
+        const selectedForControl = selections.get(group) ?? "";
+        const parentSkuForBom = selectedForControl || undefined;
 
         return (
           <Box key={group} sx={{ my: 2 }}>

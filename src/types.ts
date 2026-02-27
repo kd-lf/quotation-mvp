@@ -54,11 +54,9 @@ export interface Catalog {
 
 // ---------- Live configurator state ----------
 
-export type SelectionValue = string | string[];
-
 export interface ConfigState {
   system?: Product; // selected Level-1 system
-  selections: Map<string, SelectionValue>; // group -> sku
+  selections: Map<string, string>; // group -> sku
   catalog: Catalog;
   automation: boolean; // automation ON/OFF (your override toggle);
   selectedBom: Map<string, Set<string>>;
