@@ -42,6 +42,114 @@ interface Props {
 
 const asArray = (v: SelectionValue | undefined): string[] => (!v ? [] : Array.isArray(v) ? v : [v]);
 
+interface BomSectionProps {
+  parentSku: string;
+  bomLines: BomLine[];
+  catalog: ConfigState["catalog"];
+  quantities: ConfigState["quantities"];
+  selectedSet: Set<string>;
+  parentTotal: number;
+  getUnitPrice: (sku: string, fallback?: number) => number;
+  onToggleBom: (parentSku: string, childSku: string) => void;
+  onUpdateQty: (parentSku: string, sku: string, value: string) => void;
+  onEnsurePreselected: (parentSku: string, bomLines: BomLine[]) => void;
+}
+
+function BomSection({
+  parentSku,
+  bomLines,
+  catalog,
+  quantities,
+  selectedSet,
+  parentTotal,
+  getUnitPrice,
+  onToggleBom,
+  onUpdateQty,
+  onEnsurePreselected,
+}: BomSectionProps) {
+  const [expanded, setExpanded] = React.useState(false);
+
+  React.useEffect(() => {
+    onEnsurePreselected(parentSku, bomLines);
+  }, [parentSku, bomLines, onEnsurePreselected]);
+
+  const checkedCount = Array.from(selectedSet).length;
+  const totalCount = bomLines.length;
+
+  return (
+    <Box sx={{ mt: 1, ml: 1 }}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          cursor: "pointer",
+          userSelect: "none",
+          justifyContent: "space-between",
+          pr: 1,
+        }}
+        onClick={() => setExpanded((e) => !e)}
+      >
+        <Box sx={{ display: "flex", alignItems: "center" }}>
+          {expanded ? (
+            <ExpandLessIcon fontSize="small" sx={{ mr: 0.5 }} />
+          ) : (
+            <ExpandMoreIcon fontSize="small" sx={{ mr: 0.5 }} />
+          )}
+
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+            Includes {checkedCount} / {totalCount}
+          </Typography>
+        </Box>
+
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          {parentTotal.toFixed(2)} NOK
+        </Typography>
+      </Box>
+
+      <Collapse in={expanded} timeout="auto" unmountOnExit>
+        <Stack spacing={0.5} sx={{ mt: 1 }}>
+          {bomLines.map((line, idx) => {
+            const product = catalog.bySKU.get(line.sku);
+            const label = product?.name ?? line.name ?? line.sku;
+            const qty = quantities.get(qtyKey(parentSku, line.sku)) ?? line.qty ?? 1;
+            const unitPrice = getUnitPrice(line.sku, line.price);
+
+            return (
+              <Box key={`${parentSku}-${line.sku}-${idx}`} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Checkbox
+                  size="small"
+                  checked={selectedSet.has(line.sku)}
+                  onChange={() => onToggleBom(parentSku, line.sku)}
+                />
+
+                <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
+                  {line.sku} — {label}
+                </Typography>
+
+                <TextField
+                  size="small"
+                  type="number"
+                  label="Qty"
+                  value={qty}
+                  onChange={(e) => onUpdateQty(parentSku, line.sku, e.target.value)}
+                  inputProps={{ min: 0, step: 1, style: { width: 64 } }}
+                />
+
+                <Typography
+                  variant="body2"
+                  sx={{ width: 120, textAlign: "right", fontVariantNumeric: "tabular-nums" }}
+                >
+                  {(unitPrice * qty).toFixed(2)} NOK
+                </Typography>
+              </Box>
+            );
+          })}
+        </Stack>
+      </Collapse>
+    </Box>
+  );
+}
+
 export default function ItemSelector({
   state,
   setState,
@@ -170,108 +278,41 @@ export default function ItemSelector({
     );
   };
 
+  const toggleBom = (parentSku: string, childSku: string) => {
+    setState((prev) => {
+      if (!prev) return prev;
+
+      const map = new Map(prev.selectedBom);
+      const set = new Set(map.get(parentSku) ?? []);
+
+      if (set.has(childSku)) set.delete(childSku);
+      else set.add(childSku);
+
+      map.set(parentSku, set);
+      return { ...prev, selectedBom: map };
+    });
+  };
+
   const renderBom = (parentSku?: string) => {
     const bomLines = bomForSku(parentSku);
     if (!parentSku || !bomLines?.length) return null;
 
-    const [expanded, setExpanded] = React.useState(false);
-
-    ensureBomPreselected(parentSku, bomLines);
-
-    const selectedSet = selectedBom.get(parentSku) ?? new Set();
-    const checkedCount = Array.from(selectedSet).length;
-    const totalCount = bomLines.length;
+    const selectedSet = selectedBom.get(parentSku) ?? new Set<string>();
     const parentTotal = getBomTotal(parentSku, bomLines, selectedSet);
 
-    const toggleBom = (childSku: string) => {
-      setState((prev) => {
-        if (!prev) return prev;
-
-        const map = new Map(prev.selectedBom);
-        const set = new Set(map.get(parentSku) ?? []);
-
-        if (set.has(childSku)) set.delete(childSku);
-        else set.add(childSku);
-
-        map.set(parentSku, set);
-        return { ...prev, selectedBom: map };
-      });
-    };
-
     return (
-      <Box sx={{ mt: 1, ml: 1 }}>
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            cursor: "pointer",
-            userSelect: "none",
-            justifyContent: "space-between",
-            pr: 1,
-          }}
-          onClick={() => setExpanded((e) => !e)}
-        >
-          <Box sx={{ display: "flex", alignItems: "center" }}>
-            {expanded ? (
-              <ExpandLessIcon fontSize="small" sx={{ mr: 0.5 }} />
-            ) : (
-              <ExpandMoreIcon fontSize="small" sx={{ mr: 0.5 }} />
-            )}
-
-            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              Includes {checkedCount} / {totalCount}
-            </Typography>
-          </Box>
-
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            {parentTotal.toFixed(2)} NOK
-          </Typography>
-        </Box>
-
-        <Collapse in={expanded} timeout="auto" unmountOnExit>
-          <Stack spacing={0.5} sx={{ mt: 1 }}>
-            {bomLines.map((line, idx) => {
-              const p = catalog.bySKU.get(line.sku);
-              const label = p?.name ?? line.name ?? line.sku;
-              const qty = quantities.get(qtyKey(parentSku, line.sku)) ?? line.qty ?? 1;
-              const unitPrice = getUnitPrice(line.sku, line.price);
-
-              return (
-                <Box
-                  key={`${parentSku}-${line.sku}-${idx}`}
-                  sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                >
-                  <Checkbox
-                    size="small"
-                    checked={selectedSet.has(line.sku)}
-                    onChange={() => toggleBom(line.sku)}
-                  />
-
-                  <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
-                    {line.sku} — {label}
-                  </Typography>
-
-                  <TextField
-                    size="small"
-                    type="number"
-                    label="Qty"
-                    value={qty}
-                    onChange={(e) => updateQty(parentSku, line.sku, e.target.value)}
-                    inputProps={{ min: 0, step: 1, style: { width: 64 } }}
-                  />
-
-                  <Typography
-                    variant="body2"
-                    sx={{ width: 120, textAlign: "right", fontVariantNumeric: "tabular-nums" }}
-                  >
-                    {(unitPrice * qty).toFixed(2)} NOK
-                  </Typography>
-                </Box>
-              );
-            })}
-          </Stack>
-        </Collapse>
-      </Box>
+      <BomSection
+        parentSku={parentSku}
+        bomLines={bomLines}
+        catalog={catalog}
+        quantities={quantities}
+        selectedSet={selectedSet}
+        parentTotal={parentTotal}
+        getUnitPrice={getUnitPrice}
+        onToggleBom={toggleBom}
+        onUpdateQty={updateQty}
+        onEnsurePreselected={ensureBomPreselected}
+      />
     );
   };
 
