@@ -1,6 +1,8 @@
 // FILE: src/App.tsx
 import { useState } from "react";
-import { Container, Box, Chip, Link, Paper, Typography } from "@mui/material";
+import { Container, Box, Chip, Link, Paper, Typography, IconButton, Tooltip } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import Logo from "./components/Logo";
 import UploadExcel from "./components/UploadExcel";
 import UploadPriceBook from "./components/UploadPriceBook";
@@ -18,6 +20,7 @@ export default function App() {
   const [state, setState] = useState<ConfigState | null>(null);
   const [priceMap, setPriceMap] = useState<Map<string, number> | null>(null);
   const [negotiatedPriceMap, setNegotiatedPriceMap] = useState<Map<string, number> | null>(null);
+  const [isInfoBubbleVisible, setIsInfoBubbleVisible] = useState(true);
 
   const [priceBookName, setPriceBookName] = useState<string | null>(null);
   const [priceBookEntries, setPriceBookEntries] = useState<number | null>(null);
@@ -112,45 +115,75 @@ export default function App() {
         />
       )}
 
-      <Paper
-        elevation={3}
-        sx={{
-          position: "fixed",
-          bottom: 16,
-          left: 16,
-          px: 2,
-          py: 1.5,
-          maxWidth: 360,
-          zIndex: 1200,
-          borderRadius: 2,
-        }}
-      >
-        <Typography variant="caption" component="p" sx={{ display: "block", mb: 0.5 }}>
-          Version {APP_VERSION}
-        </Typography>
-        <Typography variant="caption" component="p">
-          Based on{" "}
-          <Link
-            href="https://github.com/kd-lf/quotation-mvp"
-            target="_blank"
-            rel="noopener noreferrer"
+      {isInfoBubbleVisible ? (
+        <Paper
+          elevation={3}
+          sx={{
+            position: "fixed",
+            bottom: 16,
+            left: 16,
+            px: 2,
+            py: 1.5,
+            maxWidth: 360,
+            zIndex: 1200,
+            borderRadius: 2,
+          }}
+        >
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 1 }}>
+            <Box>
+              <Typography variant="caption" component="p" sx={{ display: "block", mb: 0.5 }}>
+                Version {APP_VERSION}
+              </Typography>
+              <Typography variant="caption" component="p">
+                Based on{" "}
+                <Link
+                  href="https://github.com/kd-lf/quotation-mvp"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  github.com/kd-lf/quotation-mvp
+                </Link>
+                .
+              </Typography>
+              <Typography variant="caption" component="p">
+                Any feedback should be recorded as an issue{" "}
+                <Link
+                  href="https://github.com/kd-lf/quotation-mvp/issues"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  here
+                </Link>
+                .
+              </Typography>
+            </Box>
+            <Tooltip title="Hide">
+              <IconButton size="small" aria-label="Hide app info" onClick={() => setIsInfoBubbleVisible(false)}>
+                <CloseIcon fontSize="inherit" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        </Paper>
+      ) : (
+        <Tooltip title="Show app info">
+          <IconButton
+            color="primary"
+            aria-label="Show app info"
+            onClick={() => setIsInfoBubbleVisible(true)}
+            sx={{
+              position: "fixed",
+              bottom: 16,
+              left: 16,
+              zIndex: 1200,
+              bgcolor: "background.paper",
+              boxShadow: 3,
+              '&:hover': { bgcolor: 'background.paper' },
+            }}
           >
-            github.com/kd-lf/quotation-mvp
-          </Link>
-          .
-        </Typography>
-        <Typography variant="caption" component="p">
-          Any feedback should be recorded as an issue{" "}
-          <Link
-            href="https://github.com/kd-lf/quotation-mvp/issues"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            here
-          </Link>
-          .
-        </Typography>
-      </Paper>
+            <InfoOutlinedIcon />
+          </IconButton>
+        </Tooltip>
+      )}
     </Container>
   );
 }
