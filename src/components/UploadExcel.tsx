@@ -114,7 +114,7 @@ export default function UploadExcel({
           nextWarnings.push(
             ...validateRequiredHeaders(
               productsSheet,
-              ["SKU", "Default", "Price", "Currency", "Notes"],
+              ["SKU", "Default", "Price", "Notes"],
               "PRODUCTS",
             ).map((m) => `${m} (some features may be limited)`),
           );
@@ -171,7 +171,6 @@ export default function UploadExcel({
               .toLowerCase()
               .includes("yes"),
             price: row.Price !== "" && row.Price != null ? Number(row.Price) : undefined,
-            currency: row.Currency ? String(row.Currency).trim() : undefined,
             notes: row.Notes ? String(row.Notes).trim() : undefined,
           });
         }

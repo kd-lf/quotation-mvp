@@ -9,7 +9,6 @@ export interface Product {
   sku: string; // real SKU or AUTO-xxxx if generated
   default: boolean; // default option within this group
   price?: number;
-  currency?: string;
   notes?: string;
 }
 
