@@ -1,6 +1,6 @@
 // FILE: src/App.tsx
 import { useState } from "react";
-import { Container, Box, Chip } from "@mui/material";
+import { Container, Box, Chip, Link, Paper, Typography } from "@mui/material";
 import Logo from "./components/Logo";
 import UploadExcel from "./components/UploadExcel";
 import UploadPriceBook from "./components/UploadPriceBook";
@@ -11,6 +11,7 @@ import { applyMasterPricesAndBomRollups } from "./logic/pricing";
 import type { PriceBookCurrencyInfo } from "./logic/masterPrice";
 
 export type AppRole = "SuperUser" | "InternalUser" | "ExternalUser";
+const APP_VERSION = "1.0";
 
 export default function App() {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
@@ -110,6 +111,46 @@ export default function App() {
           onNegotiatedPrices={(prices) => setNegotiatedPriceMap(prices)}
         />
       )}
+
+      <Paper
+        elevation={3}
+        sx={{
+          position: "fixed",
+          bottom: 16,
+          left: 16,
+          px: 2,
+          py: 1.5,
+          maxWidth: 360,
+          zIndex: 1200,
+          borderRadius: 2,
+        }}
+      >
+        <Typography variant="caption" component="p" sx={{ display: "block", mb: 0.5 }}>
+          Version {APP_VERSION}
+        </Typography>
+        <Typography variant="caption" component="p">
+          Based on{" "}
+          <Link
+            href="https://github.com/kd-lf/quotation-mvp"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            github.com/kd-lf/quotation-mvp
+          </Link>
+          .
+        </Typography>
+        <Typography variant="caption" component="p">
+          Any feedback should be recorded as an issue{" "}
+          <Link
+            href="https://github.com/kd-lf/quotation-mvp/issues"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            here
+          </Link>
+          .
+        </Typography>
+      </Paper>
     </Container>
   );
 }
