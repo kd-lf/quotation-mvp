@@ -114,7 +114,7 @@ export default function UploadExcel({
           nextWarnings.push(
             ...validateRequiredHeaders(
               productsSheet,
-              ["SKU", "Default", "Price", "Notes"],
+              ["SKU", "Default", "Notes"],
               "PRODUCTS",
             ).map((m) => `${m} (some features may be limited)`),
           );
