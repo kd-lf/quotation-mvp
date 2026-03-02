@@ -185,9 +185,7 @@ src/
 
 If you want ready-to-import fake data for demos, use files in `demo-data/`:
 
-- `product_book_PRODUCTS.csv`
-- `product_book_RULES.csv`
-- `product_book_BOM.csv`
-- `price_book_demo.csv`
+- `product_book_BOM.xlsx` (product workbook)
+- `price_book_demo.xlsx` (price workbook)
 
-See `demo-data/README.md` for step-by-step workbook setup.
+Upload these files directly in the app using the Product Book and Price Book selectors.
