@@ -1,0 +1,8 @@
+RuleID,Enabled,IF_Group,IF_SKU,IF_Contains,THEN_Action,THEN_Group,THEN_SKU
+R001,Yes,Filter Type,FILT-UF-01,,require,Pump Option,PUMP-HP-2
+R002,Yes,Filter Type,FILT-UF-01,,block,Pump Option,PUMP-STD-1
+R003,Yes,System,SYS-AC-PRO,,setDefault,Tank Size,TANK-100L
+R004,Yes,Control Panel,CTRL-IOT,,require,Install Kit,KIT-INSTALL-PRO
+R005,Yes,Tank Size,TANK-100L,,autoSelect,Install Kit,KIT-INSTALL-PRO
+R006,Yes,System,SYS-AC-BASIC,,clearDefault,Control Panel,
+R007,Yes,System,SYS-AC-BASIC,,setDefault,Control Panel,CTRL-BASIC

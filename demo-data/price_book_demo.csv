@@ -1,0 +1,27 @@
+Catalog,Category,SKU,Description,UOM,UnitPrice
+NorthAmerica,Systems,SYS-AC-BASIC,AquaClean Basic System,EA,1850
+NorthAmerica,Systems,SYS-AC-PRO,AquaClean Pro System,EA,3250
+NorthAmerica,Filters,FILT-SED-5,Sediment Filter 5 Micron,EA,49
+NorthAmerica,Filters,FILT-CARB-10,Carbon Block Filter,EA,72
+NorthAmerica,Filters,FILT-UF-01,Ultra Filter UF Membrane,EA,138
+NorthAmerica,Pumps,PUMP-STD-1,Standard Booster Pump,EA,199
+NorthAmerica,Pumps,PUMP-HP-2,High-Pressure Booster Pump,EA,359
+NorthAmerica,Tanks,TANK-20L,20L Storage Tank,EA,129
+NorthAmerica,Tanks,TANK-50L,50L Storage Tank,EA,205
+NorthAmerica,Tanks,TANK-100L,100L Storage Tank,EA,348
+NorthAmerica,Controls,CTRL-BASIC,Basic Control Panel,EA,109
+NorthAmerica,Controls,CTRL-IOT,Smart IoT Control Panel,EA,279
+NorthAmerica,Kits,KIT-INSTALL-STD,Standard Install Kit,EA,89
+NorthAmerica,Kits,KIT-INSTALL-PRO,Premium Install Kit,EA,149
+NorthAmerica,BOM,FRAME-BASIC-01,Basic Chassis Frame,EA,245
+NorthAmerica,BOM,VALVE-INLET-01,Inlet Solenoid Valve,EA,55
+NorthAmerica,BOM,SENSOR-FLOW-01,Flow Sensor,EA,44
+NorthAmerica,BOM,FRAME-PRO-01,Reinforced Pro Chassis,EA,375
+NorthAmerica,BOM,VALVE-INLET-02,Industrial Inlet Valve,EA,82
+NorthAmerica,BOM,SENSOR-TDS-01,TDS Monitoring Sensor,EA,108
+NorthAmerica,BOM,HOSE-HP-SET,High-Pressure Hose Set,EA,35
+NorthAmerica,BOM,DAMPER-PUMP-01,Vibration Damper Kit,EA,24
+NorthAmerica,BOM,ANT-WIFI-01,Wi-Fi Antenna Module,EA,19
+NorthAmerica,BOM,CLOUD-LIC-12M,Cloud Monitoring License 12M,EA,68
+NorthAmerica,BOM,BRACKET-SS-01,Stainless Mounting Brackets,EA,21
+NorthAmerica,BOM,FITTING-SS-SET,Stainless Fitting Set,EA,42

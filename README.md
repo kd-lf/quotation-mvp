@@ -180,3 +180,14 @@ src/
 - If no system is selected, exports are intentionally blocked.
 - Negotiated prices override price book prices for matching SKUs.
 - BOM totals only include child lines that are checked and have quantity > 0.
+
+## Demo data
+
+If you want ready-to-import fake data for demos, use files in `demo-data/`:
+
+- `product_book_PRODUCTS.csv`
+- `product_book_RULES.csv`
+- `product_book_BOM.csv`
+- `price_book_demo.csv`
+
+See `demo-data/README.md` for step-by-step workbook setup.
