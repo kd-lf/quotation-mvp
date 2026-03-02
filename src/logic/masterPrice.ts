@@ -72,7 +72,8 @@ function readCell(sheet: XLSX.WorkSheet | undefined, cellRef: string): unknown {
 }
 
 export function extractPriceBookCurrencyInfo(workbook: XLSX.WorkBook): PriceBookCurrencyInfo | null {
-  const calculationSheet = workbook.Sheets["CALCULTION SHEET"];
+  const calculationSheet =
+    workbook.Sheets["CALCULATION SHEET"] ?? workbook.Sheets["CALCULTION SHEET"];
   if (!calculationSheet) return null;
 
   const rawCurrency = String(readCell(calculationSheet, "E4") ?? "")
