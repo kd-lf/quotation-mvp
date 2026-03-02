@@ -120,6 +120,7 @@ Expected columns:
 - `Parent`
 - `SKU`
 - `Quantity`
+- `AutoSelected` (optional, defaults to `Yes`)
 - `Name` (optional)
 - `Price` (optional fallback)
 

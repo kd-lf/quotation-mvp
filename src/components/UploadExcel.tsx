@@ -15,6 +15,12 @@ function toNum(v: unknown, fallback: number): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function toBool(v: unknown, fallback: boolean): boolean {
+  if (v == null || String(v).trim() === "") return fallback;
+  const normalized = String(v).trim().toLowerCase();
+  return ["yes", "true", "1", "y"].includes(normalized);
+}
+
 function parseBomSheet(workbook: XLSX.WorkBook): Map<string, BomLine[]> {
   const sheet = workbook.Sheets["BOM"];
   const map = new Map<string, BomLine[]>();
@@ -33,7 +39,9 @@ function parseBomSheet(workbook: XLSX.WorkBook): Map<string, BomLine[]> {
     const priceNum = toNum(rawPrice, NaN);
     const price = Number.isFinite(priceNum) ? priceNum : undefined;
 
-    const line: BomLine = { sku, qty, name, price };
+    const autoSelected = toBool(r.AutoSelected, true);
+
+    const line: BomLine = { sku, qty, autoSelected, name, price };
     const arr = map.get(parent) ?? [];
     arr.push(line);
     map.set(parent, arr);

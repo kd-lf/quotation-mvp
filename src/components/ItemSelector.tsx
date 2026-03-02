@@ -185,7 +185,10 @@ export default function ItemSelector({
       let changed = false;
 
       if (!map.has(parentSku)) {
-        map.set(parentSku, new Set(bomLines.map((line) => line.sku)));
+        map.set(
+          parentSku,
+          new Set(bomLines.filter((line) => line.autoSelected).map((line) => line.sku)),
+        );
         changed = true;
       }
 

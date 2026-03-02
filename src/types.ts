@@ -16,6 +16,7 @@ export interface Product {
 export interface BomLine {
   sku: string;
   qty: number;
+  autoSelected: boolean;
   name?: string;
   price?: number;
 }
