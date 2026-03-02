@@ -1,5 +1,10 @@
 import * as XLSX from "xlsx";
 
+export type PriceBookCurrencyInfo = {
+  currency: string;
+  usdConversionRate: number;
+};
+
 const normSku = (v: unknown) =>
   String(v ?? "")
     .replace(/[\s\u00A0]/g, "")
@@ -59,4 +64,26 @@ export function buildMasterPriceMap(workbook: XLSX.WorkBook): Map<string, number
   }
 
   return map;
+}
+
+function readCell(sheet: XLSX.WorkSheet | undefined, cellRef: string): unknown {
+  if (!sheet) return undefined;
+  return sheet[cellRef]?.v;
+}
+
+export function extractPriceBookCurrencyInfo(workbook: XLSX.WorkBook): PriceBookCurrencyInfo | null {
+  const calculationSheet = workbook.Sheets["CALCULTION SHEET"];
+  if (!calculationSheet) return null;
+
+  const rawCurrency = String(readCell(calculationSheet, "E4") ?? "")
+    .trim()
+    .toUpperCase();
+  const usdConversionRate = parsePrice(readCell(calculationSheet, "E5"));
+
+  if (!rawCurrency || usdConversionRate === undefined) return null;
+
+  return {
+    currency: rawCurrency,
+    usdConversionRate,
+  };
 }

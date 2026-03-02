@@ -22,6 +22,7 @@ import expandConfigToQuoteItems from "../logic/expandConfigToQuoteItems";
 import { generateQuotePdf } from "../logic/generateQuotePdf";
 
 import type { BomLine, ConfigState, Product } from "../types";
+import type { PriceBookCurrencyInfo } from "../logic/masterPrice";
 import { applyRules, selectSystem, selectItem } from "../logic/ruleEngine.ts";
 
 const qtyKey = (parentSku: string, sku: string) => `${parentSku}::${sku}`;
@@ -33,6 +34,7 @@ interface Props {
   priceBookName: string | null;
   priceBookEntries: number | null;
   priceBookUploadedAt: Date | null;
+  priceBookCurrencyInfo: PriceBookCurrencyInfo | null;
   negotiatedPriceMap: Map<string, number> | null;
   clearNegotiatedPrices: () => void;
   onNegotiatedPrices: (prices: Map<string, number>) => void;
@@ -50,6 +52,7 @@ interface BomSectionProps {
   onToggleBom: (parentSku: string, childSku: string) => void;
   onUpdateQty: (parentSku: string, sku: string, value: string) => void;
   onEnsurePreselected: (parentSku: string, bomLines: BomLine[]) => void;
+  currencyLabel: string;
 }
 
 function BomSection({
@@ -63,6 +66,7 @@ function BomSection({
   onToggleBom,
   onUpdateQty,
   onEnsurePreselected,
+  currencyLabel,
 }: BomSectionProps) {
   const [expanded, setExpanded] = React.useState(false);
 
@@ -99,7 +103,7 @@ function BomSection({
         </Box>
 
         <Typography variant="body2" sx={{ fontWeight: 600 }}>
-          {parentTotal.toFixed(2)} NOK
+          {parentTotal.toFixed(2)} {currencyLabel}
         </Typography>
       </Box>
 
@@ -136,7 +140,7 @@ function BomSection({
                   variant="body2"
                   sx={{ width: 120, textAlign: "right", fontVariantNumeric: "tabular-nums" }}
                 >
-                  {(unitPrice * qty).toFixed(2)} NOK
+                  {(unitPrice * qty).toFixed(2)} {currencyLabel}
                 </Typography>
               </Box>
             );
@@ -154,11 +158,13 @@ export default function ItemSelector({
   priceBookName,
   priceBookEntries,
   priceBookUploadedAt,
+  priceBookCurrencyInfo,
   negotiatedPriceMap,
   clearNegotiatedPrices,
   onNegotiatedPrices,
 }: Props) {
   const [exportParentsOnly, setExportParentsOnly] = React.useState(false);
+  const currencyLabel = priceBookCurrencyInfo?.currency ?? "NOK";
   const { catalog, selections, system, selectedBom, quantities } = state;
 
   const getOptionsForGroup = (group: string): Product[] =>
@@ -271,7 +277,7 @@ export default function ItemSelector({
             inputProps={{ min: 0, step: 1, style: { width: 64 } }}
           />
           <Typography variant="body2" sx={{ width: 140, textAlign: "right", fontWeight: 600 }}>
-            {(unitPrice * qty).toFixed(2)} NOK
+            {(unitPrice * qty).toFixed(2)} {currencyLabel}
           </Typography>
         </Box>
       </Box>
@@ -312,6 +318,7 @@ export default function ItemSelector({
         onToggleBom={toggleBom}
         onUpdateQty={updateQty}
         onEnsurePreselected={ensureBomPreselected}
+        currencyLabel={currencyLabel}
       />
     );
   };
@@ -370,7 +377,7 @@ export default function ItemSelector({
 
         <Button
           variant="contained"
-          onClick={() => generateQuotePdf(getPdfItems(), state.automation, 30)}
+          onClick={() => generateQuotePdf(getPdfItems(), state.automation, 30, currencyLabel)}
         >
           Generate PDF
         </Button>

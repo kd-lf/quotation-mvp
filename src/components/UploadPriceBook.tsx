@@ -2,7 +2,11 @@
 import * as XLSX from "xlsx";
 import { Button } from "@mui/material";
 import { useCallback, useRef, useState } from "react";
-import { buildMasterPriceMap } from "../logic/masterPrice";
+import {
+  buildMasterPriceMap,
+  extractPriceBookCurrencyInfo,
+  type PriceBookCurrencyInfo,
+} from "../logic/masterPrice";
 
 export default function UploadPriceBook({
   disabled,
@@ -10,7 +14,7 @@ export default function UploadPriceBook({
   onInfo, // <-- NEW
 }: {
   disabled?: boolean;
-  onPrices: (priceMap: Map<string, number>) => void;
+  onPrices: (priceMap: Map<string, number>, currencyInfo: PriceBookCurrencyInfo | null) => void;
   onInfo?: (info: { name: string; uploadedAt: Date }) => void; // <-- NEW
 }) {
   const ref = useRef<HTMLInputElement | null>(null);
@@ -29,7 +33,8 @@ export default function UploadPriceBook({
         const data = await file.arrayBuffer();
         const wb = XLSX.read(data, { type: "array" });
         const map = buildMasterPriceMap(wb);
-        onPrices(map);
+        const currencyInfo = extractPriceBookCurrencyInfo(wb);
+        onPrices(map, currencyInfo);
       } finally {
         setBusy(false);
         if (ref.current) ref.current.value = "";

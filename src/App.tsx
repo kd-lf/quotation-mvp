@@ -8,6 +8,7 @@ import ItemSelector from "./components/ItemSelector";
 import type { Catalog, ConfigState } from "./types";
 import { createInitialState } from "./logic/ruleEngine";
 import { applyMasterPricesAndBomRollups } from "./logic/pricing";
+import type { PriceBookCurrencyInfo } from "./logic/masterPrice";
 
 export type AppRole = "SuperUser" | "InternalUser" | "ExternalUser";
 
@@ -20,6 +21,7 @@ export default function App() {
   const [priceBookName, setPriceBookName] = useState<string | null>(null);
   const [priceBookEntries, setPriceBookEntries] = useState<number | null>(null);
   const [priceBookUploadedAt, setPriceBookUploadedAt] = useState<Date | null>(null);
+  const [priceBookCurrencyInfo, setPriceBookCurrencyInfo] = useState<PriceBookCurrencyInfo | null>(null);
 
   const onCatalog = (cat: Catalog) => {
     const priced = priceMap ? applyMasterPricesAndBomRollups(cat, priceMap) : cat;
@@ -27,10 +29,11 @@ export default function App() {
     setState(createInitialState(priced));
   };
 
-  const onPrices = (pm: Map<string, number>) => {
+  const onPrices = (pm: Map<string, number>, currencyInfo: PriceBookCurrencyInfo | null) => {
     console.log("Master price map size:", pm.size);
     setPriceMap(pm);
     setPriceBookEntries(pm.size);
+    setPriceBookCurrencyInfo(currencyInfo);
 
     setCatalog((prev) => {
       if (!prev) return prev;
@@ -48,6 +51,7 @@ export default function App() {
     setNegotiatedPriceMap(null);
     setPriceBookUploadedAt(null);
     setPriceBookEntries(null);
+    setPriceBookCurrencyInfo(null);
   };
 
   const effectivePriceMap = negotiatedPriceMap ?? priceMap;
@@ -58,7 +62,10 @@ export default function App() {
     if (catalog && negotiatedPriceMap) {
       return `Status: Product book + negotiated prices (${negotiatedPriceMap.size} overrides)`;
     }
-    return `Status: Product book + price sheet (${priceBookEntries ?? 0} entries)`;
+    const currencyText = priceBookCurrencyInfo
+      ? `, ${priceBookCurrencyInfo.currency} (1 USD = ${priceBookCurrencyInfo.usdConversionRate.toFixed(4)})`
+      : "";
+    return `Status: Product book + price sheet (${priceBookEntries ?? 0} entries${currencyText})`;
   })();
 
   return (
@@ -97,6 +104,7 @@ export default function App() {
           priceBookName={priceBookName}
           priceBookEntries={priceBookEntries}
           priceBookUploadedAt={priceBookUploadedAt}
+          priceBookCurrencyInfo={priceBookCurrencyInfo}
           negotiatedPriceMap={negotiatedPriceMap}
           clearNegotiatedPrices={() => setNegotiatedPriceMap(null)}
           onNegotiatedPrices={(prices) => setNegotiatedPriceMap(prices)}
